@@ -1,12 +1,15 @@
 export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getProducts, SortOption } from "@/lib/products";
 import { toPlain } from "@/lib/serialize";
 import { ProductCard } from "@/components/ProductCard";
 import { FilterSidebar } from "@/components/FilterSidebar";
 import { SortSelect } from "@/components/SortSelect";
 import { Pagination } from "@/components/Pagination";
+import { Category } from "@/models/Category";
+import { connectToDatabase } from "@/lib/db";
 import type { ProductListItem } from "@/types/product";
 
 interface PageProps {
@@ -38,6 +41,9 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
   if (!result.category) notFound();
 
+  await connectToDatabase();
+  const childCategories = await Category.find({ parent: result.category._id }).sort({ name: 1 }).lean();
+
   const category = toPlain<{ name: string; description?: string; filters: { key: string; label: string; options: string[] }[] }>(
     result.category
   );
@@ -54,6 +60,15 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
       <div className="mb-10 max-w-xl">
         <h1 className="font-serif text-3xl">{category.name}</h1>
         {category.description && <p className="mt-2 text-stone">{category.description}</p>}
+        {childCategories.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {childCategories.map((child) => (
+              <Link key={child.slug} href={`/category/${child.slug}`} className="border border-line px-3 py-1.5 text-sm text-stone hover:text-ink">
+                {child.name}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[200px_1fr]">

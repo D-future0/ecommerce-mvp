@@ -16,6 +16,7 @@ export default async function EditCategoryPage({ params }: PageProps) {
   await connectToDatabase();
   const categoryDoc = await Category.findById(id).lean();
   if (!categoryDoc) notFound();
+  const categories = toPlain<{ _id: string; name: string }[]>(await Category.find().sort({ name: 1 }).select("name").lean());
 
   const category = toPlain<CategoryFormValues>(categoryDoc);
 
@@ -23,7 +24,7 @@ export default async function EditCategoryPage({ params }: PageProps) {
     <div>
       <h2 className="text-sm text-ink">Edit category</h2>
       <div className="mt-6">
-        <CategoryForm initial={category} />
+        <CategoryForm initial={category} categories={categories} />
       </div>
     </div>
   );

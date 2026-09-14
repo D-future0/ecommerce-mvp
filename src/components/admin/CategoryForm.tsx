@@ -15,6 +15,7 @@ export interface CategoryFormValues {
   slug: string;
   description?: string;
   image?: string;
+  parent?: string | null;
   filters: { key: string; label: string; options: string[] }[];
 }
 
@@ -26,7 +27,7 @@ function slugify(input: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-export function CategoryForm({ initial }: { initial?: CategoryFormValues }) {
+export function CategoryForm({ initial, categories = [] }: { initial?: CategoryFormValues; categories?: { _id: string; name: string }[] }) {
   const router = useRouter();
   const isEdit = !!initial?._id;
 
@@ -35,6 +36,7 @@ export function CategoryForm({ initial }: { initial?: CategoryFormValues }) {
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [description, setDescription] = useState(initial?.description ?? "");
   const [image, setImage] = useState(initial?.image ?? "");
+  const [parent, setParent] = useState(initial?.parent ?? "");
   const [uploading, setUploading] = useState(false);
   const [filters, setFilters] = useState<FilterRow[]>(
     initial?.filters.map((f) => ({ key: f.key, label: f.label, options: f.options.join(", ") })) ?? []
@@ -78,7 +80,7 @@ export function CategoryForm({ initial }: { initial?: CategoryFormValues }) {
       slug,
       description: description || undefined,
       image: image || undefined,
-      parent: null,
+      parent: parent || null,
       filters: filters
         .filter((f) => f.key.trim() && f.label.trim())
         .map((f) => ({
@@ -139,6 +141,15 @@ export function CategoryForm({ initial }: { initial?: CategoryFormValues }) {
           }}
           className={`mt-1 ${inputClass}`}
         />
+      </div>
+      <div>
+        <label className="text-xs text-stone">Parent category (optional)</label>
+        <select value={parent} onChange={(e) => setParent(e.target.value)} className={`mt-1 ${inputClass}`}>
+          <option value="">Top-level category</option>
+          {categories.filter((category) => category._id !== initial?._id).map((category) => (
+            <option key={category._id} value={category._id}>{category.name}</option>
+          ))}
+        </select>
       </div>
       <div>
         <label className="text-xs text-stone">Description</label>

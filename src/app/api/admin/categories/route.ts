@@ -38,6 +38,11 @@ export async function POST(req: NextRequest) {
 
   await connectToDatabase();
 
+  if (parsed.data.parent) {
+    const parent = await Category.exists({ _id: parsed.data.parent });
+    if (!parent) return NextResponse.json({ error: "Parent category not found" }, { status: 400 });
+  }
+
   const existing = await Category.findOne({ slug: parsed.data.slug });
   if (existing) return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
 

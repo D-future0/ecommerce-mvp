@@ -42,6 +42,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   await connectToDatabase();
 
+  if (parsed.data.parent) {
+    if (parsed.data.parent === id) {
+      return NextResponse.json({ error: "A category cannot be its own parent" }, { status: 400 });
+    }
+    const parent = await Category.exists({ _id: parsed.data.parent });
+    if (!parent) return NextResponse.json({ error: "Parent category not found" }, { status: 400 });
+  }
+
   const conflict = await Category.findOne({ slug: parsed.data.slug, _id: { $ne: id } });
   if (conflict) return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
 
@@ -66,6 +74,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (inUse > 0) {
     return NextResponse.json(
       { error: `${inUse} product(s) still use this category` },
+      { status: 409 }
+    );
+  }
+
+  const childCount = await Category.countDocuments({ parent: id });
+  if (childCount > 0) {
+    return NextResponse.json(
+      { error: `${childCount} child categor${childCount === 1 ? "y" : "ies"} still use this category` },
       { status: 409 }
     );
   }

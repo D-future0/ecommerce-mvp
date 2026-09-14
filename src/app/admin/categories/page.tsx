@@ -34,7 +34,7 @@ export default async function AdminCategoriesPage() {
             <tr key={c._id.toString()} className="border-b border-line">
               <td className="py-3">
                 <Link href={`/admin/categories/${c._id}`} className="text-ink">
-                  {c.name}
+                  {c.parent ? <span className="text-stone">↳ </span> : null}{c.name}
                 </Link>
               </td>
               <td className="py-3 text-stone">{c.slug}</td>
