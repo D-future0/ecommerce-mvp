@@ -11,6 +11,7 @@ import { Product } from "../models/Product";
 import { User } from "../models/User";
 
 config({ path: ".env.local" });
+config({ path: ".env" });
 
 async function main() {
   const uri = process.env.MONGODB_URI;

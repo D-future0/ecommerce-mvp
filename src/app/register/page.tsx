@@ -18,27 +18,32 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(typeof data.error === "string" ? data.error : "Couldn't create your account.");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(typeof data.error === "string" ? data.error : "Couldn't create your account.");
+        return;
+      }
+
+      const signInRes = await signIn("credentials", { email, password, redirect: false });
+      if (signInRes?.error) {
+        router.push("/login");
+        return;
+      }
+
+      router.push("/account");
+      router.refresh();
+    } catch {
+      setError("We couldn't reach the server. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const signInRes = await signIn("credentials", { email, password, redirect: false });
-    if (signInRes?.error) {
-      router.push("/login");
-      return;
-    }
-
-    router.push("/account");
-    router.refresh();
   }
 
   return (
