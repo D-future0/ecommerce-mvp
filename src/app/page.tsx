@@ -41,13 +41,14 @@ export default async function HomePage() {
               collections.map(async (collection) => {
                 const collectionProducts = await Product.find({ category: collection._id, isActive: true })
                   .sort({ createdAt: -1 })
-                  .limit(8)
+                  .limit(4)
                   .lean();
 
                 return (
                   <FeaturedSection
                     key={String(collection._id)}
                     title={collection.name}
+                    categorySlug={collection.slug}
                     products={toPlain(collectionProducts)}
                     theme={collection.homeTheme ?? "purple"}
                     displayMode={collection.homeDisplayMode ?? "grid"}

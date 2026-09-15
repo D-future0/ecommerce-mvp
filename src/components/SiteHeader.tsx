@@ -25,7 +25,7 @@ export async function SiteHeader() {
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-6">
           <Link href="/" className="font-serif text-xl shrink-0">
-            Store
+            MVP
           </Link>
 
           <div className="hidden md:block flex-1 max-w-xs">
@@ -41,7 +41,7 @@ export async function SiteHeader() {
             <Link href="/cart" aria-label="Cart" className="relative text-ink">
               <ShoppingBag size={18} strokeWidth={1.5} />
               {cartCount > 0 && (
-                <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center bg-accent px-1 text-[10px] text-paper">
+                <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center bg-purple-800 px-1 text-[10px] text-paper">
                   {cartCount}
                 </span>
               )}
@@ -54,7 +54,7 @@ export async function SiteHeader() {
 
         <nav className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
           {categories.map((cat) => (
-            <Link key={cat.slug} href={`/category/${cat.slug}`} className="text-stone hover:text-ink">
+            <Link key={cat.slug} href={`/category/${cat.slug}`} className="text-stone hover:text-purple-800">
               {cat.name}
             </Link>
           ))}

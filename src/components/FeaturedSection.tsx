@@ -1,10 +1,12 @@
 import { getFeaturedProducts } from "@/lib/products";
 import { toPlain } from "@/lib/serialize";
 import { ProductCard } from "@/components/ProductCard";
+import Link from "next/link";
 import type { ProductListItem } from "@/types/product";
 
 interface FeaturedSectionProps {
   title?: string;
+  categorySlug?: string;
   products?: ProductListItem[];
   theme?: "purple" | "rose" | "slate" | "emerald" | "gold";
   displayMode?: "grid" | "carousel";
@@ -18,8 +20,8 @@ const themeClasses = {
   gold: "bg-amber-50 border-amber-200 text-amber-900",
 };
 
-export async function FeaturedSection({ title = "Featured collection", products, theme = "purple", displayMode = "grid" }: FeaturedSectionProps = {}) {
-  const docs = products ?? (await getFeaturedProducts(8));
+export async function FeaturedSection({ title = "Featured collection", categorySlug, products, theme = "purple", displayMode = "grid" }: FeaturedSectionProps = {}) {
+  const docs = products ?? (await getFeaturedProducts(4));
   const list = toPlain<ProductListItem[]>(docs);
 
   if (!list.length) return null;
@@ -27,7 +29,14 @@ export async function FeaturedSection({ title = "Featured collection", products,
   return (
     <section className={`mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 ${themeClasses[theme]}`}>
       <div className="rounded-2xl border p-4 sm:p-6">
-        <h2 className="font-serif text-2xl">{title}</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-serif text-2xl">{title}</h2>
+          {categorySlug && (
+            <Link href={`/category/${categorySlug}`} className="shrink-0 text-sm underline underline-offset-4">
+              View all
+            </Link>
+          )}
+        </div>
         {displayMode === "carousel" ? (
           <div className="mt-8 flex gap-4 overflow-x-auto pb-2">
             {list.map((product) => (
