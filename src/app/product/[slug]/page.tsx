@@ -9,6 +9,7 @@ import { toPlain } from "@/lib/serialize";
 import { connectToDatabase } from "@/lib/db";
 import { Review } from "@/models/Review";
 import { User } from "@/models/User";
+import { Order } from "@/models/Order";
 import { ProductGallery } from "@/components/ProductGallery";
 import { PurchasePanel } from "@/components/PurchasePanel";
 import { RelatedProducts } from "@/components/RelatedProducts";
@@ -53,10 +54,20 @@ export default async function ProductPage({ params }: PageProps) {
     getServerSession(authOptions),
   ]);
 
+  let canReview = false;
   let initiallyWishlisted = false;
   if (session?.user) {
-    const user = await User.findById(session.user.id).select("wishlist").lean();
+    const [user, purchase] = await Promise.all([
+      User.findById(session.user.id).select("wishlist").lean(),
+      Order.exists({
+        user: session.user.id,
+        status: { $in: ["paid", "processing", "shipped", "delivered"] },
+        "items.product": productDoc._id,
+      }),
+    ]);
+
     initiallyWishlisted = !!user?.wishlist.some((id) => id.toString() === productDoc._id.toString());
+    canReview = session.user.role === "admin" || !!purchase;
   }
 
   const product = toPlain<{
@@ -80,6 +91,7 @@ export default async function ProductPage({ params }: PageProps) {
       <ViewTracker slug={slug} />
 
       <p className="mb-6 text-sm text-stone">
+        <span className="mr-2 text-stone">Collection</span>
         <a href={`/category/${product.category.slug}`} className="hover:text-ink">
           {product.category.name}
         </a>
@@ -137,7 +149,13 @@ export default async function ProductPage({ params }: PageProps) {
         )}
 
         <div className="mt-8">
-          <ReviewForm slug={slug} />
+          {canReview ? (
+            <ReviewForm slug={slug} />
+          ) : (
+            <p className="text-sm text-stone">
+              Purchase this item to leave a review, or contact support if you are an admin.
+            </p>
+          )}
         </div>
       </section>
 

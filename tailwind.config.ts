@@ -5,12 +5,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#111111",
-        paper: "#FAFAF8",
-        accent: "#1D4E3F",
-        line: "#E4E2DC",
-        stone: "#8A8578",
-        sand: "#F0EEE7",
+        ink: "#1F113D",
+        paper: "#F8F4FF",
+        accent: "#7C3AED",
+        line: "#E9DDFF",
+        stone: "#6B5A8A",
+        sand: "#F3E8FF",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
+import { Order } from "@/models/Order";
 import { Review } from "@/models/Review";
 import { rateLimit } from "@/lib/redis";
 
@@ -50,10 +51,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   const product = await Product.findOne({ slug }).select("_id").lean();
   if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
 
+  const isAdmin = session.user.role === "admin";
+  const hasPurchased = await Order.exists({
+    user: session.user.id,
+    status: { $in: ["paid", "processing", "shipped", "delivered"] },
+    "items.product": product._id,
+  });
+
+  if (!isAdmin && !hasPurchased) {
+    return NextResponse.json(
+      { error: "Only verified buyers can leave a review for this product." },
+      { status: 403 }
+    );
+  }
+
   try {
     const review = await Review.create({
       product: product._id,
       user: session.user.id,
+      verifiedPurchase: !!hasPurchased,
       ...parsed.data,
     });
     return NextResponse.json({ review }, { status: 201 });

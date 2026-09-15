@@ -17,6 +17,10 @@ const categorySchema = z.object({
   image: z.string().url().optional().or(z.literal("")),
   parent: z.string().nullable().default(null),
   filters: z.array(filterSchema).default([]),
+  showOnHome: z.boolean().optional().default(false),
+  homeOrder: z.number().int().min(1).max(999).optional().default(100),
+  homeTheme: z.enum(["purple", "rose", "slate", "emerald", "gold"]).optional().default("purple"),
+  homeDisplayMode: z.enum(["grid", "carousel"]).optional().default("grid"),
 });
 
 export async function GET() {

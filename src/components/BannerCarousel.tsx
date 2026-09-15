@@ -23,13 +23,14 @@ export function BannerCarousel({ banners }: { banners: BannerItem[] }) {
   if (!banners.length) return null;
   const banner = banners[index];
   const content = (
-    <div className="relative min-h-[18rem] overflow-hidden bg-ink text-paper sm:min-h-[24rem]">
+    <div className="relative min-h-[14rem] overflow-hidden bg-ink text-paper sm:min-h-[16rem]">
       <img src={banner.image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
-      <div className="absolute inset-0 bg-black/35" />
+      {/* <div className="absolute inset-0 bg-black/35" /> 
       <div className="relative flex min-h-[18rem] max-w-xl flex-col justify-end p-6 sm:min-h-[24rem] sm:p-10">
         <h2 className="font-serif text-3xl leading-tight sm:text-5xl">{banner.title}</h2>
         {banner.subtitle && <p className="mt-3 max-w-md text-sm text-paper/85 sm:text-base">{banner.subtitle}</p>}
       </div>
+      */}
       {banners.length > 1 && (
         <div className="absolute bottom-6 right-6 flex gap-2" aria-label="Banner slides">
           {banners.map((item, itemIndex) => (

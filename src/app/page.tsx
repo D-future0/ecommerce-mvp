@@ -4,12 +4,18 @@ import { FeaturedSection } from "@/components/FeaturedSection";
 import { BannerCarousel, BannerItem } from "@/components/BannerCarousel";
 import { connectToDatabase } from "@/lib/db";
 import { Banner } from "@/models/Banner";
+import { Category } from "@/models/Category";
+import { Product } from "@/models/Product";
 import { toPlain } from "@/lib/serialize";
 
 export default async function HomePage() {
   await connectToDatabase();
   const bannerDocs = await Banner.find({ active: true }).sort({ sortOrder: 1, createdAt: -1 }).lean();
   const banners = toPlain<BannerItem[]>(bannerDocs);
+
+  const collections = await Category.find({ showOnHome: true, parent: null })
+    .sort({ homeOrder: 1, name: 1 })
+    .lean();
 
   return (
     <main>
@@ -28,7 +34,32 @@ export default async function HomePage() {
         </p>
       </div>
 
-      <FeaturedSection />
+      {collections.length > 0 ? (
+        <>
+          {(
+            await Promise.all(
+              collections.map(async (collection) => {
+                const collectionProducts = await Product.find({ category: collection._id, isActive: true })
+                  .sort({ createdAt: -1 })
+                  .limit(8)
+                  .lean();
+
+                return (
+                  <FeaturedSection
+                    key={String(collection._id)}
+                    title={collection.name}
+                    products={toPlain(collectionProducts)}
+                    theme={collection.homeTheme ?? "purple"}
+                    displayMode={collection.homeDisplayMode ?? "grid"}
+                  />
+                );
+              })
+            )
+          )}
+        </>
+      ) : (
+        <FeaturedSection />
+      )}
     </main>
   );
 }

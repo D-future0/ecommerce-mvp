@@ -41,6 +41,7 @@ export const authOptions: AuthOptions = {
           "+passwordHash"
         );
         if (!user) throw new Error("Invalid email or password");
+        if (user.isDeactivated) throw new Error("This account has been deactivated.");
 
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!isValid) throw new Error("Invalid email or password");
