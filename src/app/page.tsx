@@ -7,15 +7,26 @@ import { Banner } from "@/models/Banner";
 import { Category } from "@/models/Category";
 import { Product } from "@/models/Product";
 import { toPlain } from "@/lib/serialize";
+import type { ProductListItem } from "@/types/product";
+
+type HomeCollection = {
+  _id: string;
+  name: string;
+  slug: string;
+  homeTheme?: "purple" | "rose" | "slate" | "emerald" | "gold";
+  homeDisplayMode?: "grid" | "carousel";
+};
 
 export default async function HomePage() {
   await connectToDatabase();
   const bannerDocs = await Banner.find({ active: true }).sort({ sortOrder: 1, createdAt: -1 }).lean();
   const banners = toPlain<BannerItem[]>(bannerDocs);
 
-  const collections = await Category.find({ isCollection: true, showOnHome: true, parent: null })
-    .sort({ homeOrder: 1, name: 1 })
-    .lean();
+  const collections = toPlain<HomeCollection[]>(
+    await Category.find({ isCollection: true, showOnHome: true, parent: null })
+      .sort({ homeOrder: 1, name: 1 })
+      .lean()
+  );
 
   return (
     <main>
@@ -49,7 +60,7 @@ export default async function HomePage() {
                     key={String(collection._id)}
                     title={collection.name}
                     categorySlug={collection.slug}
-                    products={toPlain(collectionProducts)}
+                    products={toPlain<ProductListItem[]>(collectionProducts)}
                     theme={collection.homeTheme ?? "purple"}
                     displayMode={collection.homeDisplayMode ?? "grid"}
                   />
