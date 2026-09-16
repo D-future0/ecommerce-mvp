@@ -9,6 +9,7 @@ import { FilterSidebar } from "@/components/FilterSidebar";
 import { SortSelect } from "@/components/SortSelect";
 import { Pagination } from "@/components/Pagination";
 import { Category } from "@/models/Category";
+import { Product } from "@/models/Product";
 import { connectToDatabase } from "@/lib/db";
 import type { ProductListItem } from "@/types/product";
 
@@ -42,11 +43,25 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   if (!result.category) notFound();
 
   await connectToDatabase();
-  const childCategories = await Category.find({ parent: result.category._id }).sort({ name: 1 }).lean();
+  const [childCategories, databaseColors] = await Promise.all([
+    Category.find({ parent: result.category._id }).sort({ name: 1 }).lean(),
+    Product.distinct("attributes.color", { category: result.category._id, isActive: true }),
+  ]);
 
-  const category = toPlain<{ name: string; description?: string; filters: { key: string; label: string; options: string[] }[] }>(
+  const category = toPlain<{
+    name: string;
+    description?: string;
+    filters: { key: string; label: string; options: string[] }[];
+  }>(
     result.category
   );
+  const colors = databaseColors.filter((color): color is string => typeof color === "string" && color.trim().length > 0).sort();
+  const hasColorFilter = category.filters.some((filter) => filter.key === "color");
+  const filtersWithDatabaseColors = hasColorFilter
+    ? category.filters.map((filter) => (filter.key === "color" ? { ...filter, options: colors } : filter))
+    : colors.length > 0
+      ? [...category.filters, { key: "color", label: "Color", options: colors }]
+      : category.filters;
   const products = toPlain<ProductListItem[]>(result.products);
 
   const makeHref = (p: number) => {
@@ -73,7 +88,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[200px_1fr]">
         <aside className="lg:sticky lg:top-6 lg:self-start">
-          <FilterSidebar filters={category.filters ?? []} />
+          <FilterSidebar filters={filtersWithDatabaseColors} />
         </aside>
 
         <div>

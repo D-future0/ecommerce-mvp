@@ -91,7 +91,7 @@ export default async function ProductPage({ params }: PageProps) {
       <ViewTracker slug={slug} />
 
       <p className="mb-6 text-sm text-stone">
-        <span className="mr-2 text-stone">Collection</span>
+        <span className="mr-2 text-stone">Category</span>
         <a href={`/category/${product.category.slug}`} className="hover:text-ink">
           {product.category.name}
         </a>

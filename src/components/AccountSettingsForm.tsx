@@ -188,15 +188,7 @@ export function AccountSettingsForm({ initial }: { initial: AccountUser }) {
         <h2 className="text-xl font-medium">Address</h2>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="text-xs uppercase tracking-[0.16em] text-stone">Label</label>
-            <input
-              value={addressForm.label}
-              onChange={(e) => setAddressForm((prev) => ({ ...prev, label: e.target.value }))}
-              className={`mt-2 ${inputClass}`}
-            />
-          </div>
-          <div>
+          <div className="md:col-span-2">
             <label className="text-xs uppercase tracking-[0.16em] text-stone">Phone</label>
             <input
               required

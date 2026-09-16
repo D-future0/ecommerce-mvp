@@ -193,7 +193,7 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
           <label className="text-xs text-stone">Show on home page</label>
           <div className="mt-2 flex items-center gap-2">
             <input type="checkbox" checked={showOnHome} onChange={(e) => setShowOnHome(e.target.checked)} className="accent-accent" />
-            <span className="text-sm text-stone">Display this collection on the landing page</span>
+            <span className="text-sm text-stone">Display this category on the landing page</span>
           </div>
         </div>
         <div>

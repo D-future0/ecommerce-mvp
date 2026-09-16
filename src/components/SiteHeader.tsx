@@ -13,7 +13,7 @@ export async function SiteHeader() {
   // builds like /_not-found, which render without a live DB connection) —
   // the header degrades to no category links instead of a 500.
   const categories = await connectToDatabase()
-    .then(() => Category.find({ parent: null }).sort({ name: 1 }).limit(6).lean())
+    .then(() => Category.find({ parent: null, isCollection: { $ne: true } }).sort({ name: 1 }).limit(6).lean())
     .catch(() => []);
 
   const session = await getServerSession(authOptions).catch(() => null);

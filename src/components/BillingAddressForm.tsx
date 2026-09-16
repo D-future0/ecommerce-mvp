@@ -16,7 +16,7 @@ const inputClass = "w-full border border-line bg-transparent px-3 py-2 text-sm o
 
 export function BillingAddressForm({ initial }: { initial?: BillingAddress | null }) {
   const [form, setForm] = useState({
-    label: initial?.label ?? "Billing",
+    label: "Billing",
     line1: initial?.line1 ?? "",
     line2: initial?.line2 ?? "",
     city: initial?.city ?? "",
@@ -51,15 +51,7 @@ export function BillingAddressForm({ initial }: { initial?: BillingAddress | nul
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 rounded border border-line p-5">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="text-xs uppercase tracking-[0.16em] text-stone">Label</label>
-          <input
-            value={form.label}
-            onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
-            className={`mt-2 ${inputClass}`}
-          />
-        </div>
+      <div className="grid gap-4 md:grid-cols-1">
         <div>
           <label className="text-xs uppercase tracking-[0.16em] text-stone">Phone</label>
           <input

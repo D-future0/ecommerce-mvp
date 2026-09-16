@@ -7,6 +7,8 @@ export interface ICategory {
   description?: string;
   image?: string;
   parent?: Types.ObjectId | null;
+  isCollection?: boolean;
+  featured?: boolean;
   filters: {
     key: string; // e.g. "size", "color", "material"
     label: string;
@@ -27,6 +29,8 @@ const CategorySchema = new Schema<ICategory>(
     description: String,
     image: String,
     parent: { type: Schema.Types.ObjectId, ref: "Category", default: null },
+    isCollection: { type: Boolean, default: false },
+    featured: { type: Boolean, default: false },
     filters: [
       {
         key: { type: String, required: true },

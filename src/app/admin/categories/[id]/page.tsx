@@ -22,7 +22,7 @@ export default async function EditCategoryPage({ params }: PageProps) {
 
   return (
     <div>
-      <h2 className="text-sm text-ink">Edit collection</h2>
+      <h2 className="text-sm text-ink">Edit category</h2>
       <div className="mt-6">
         <CategoryForm initial={category} categories={categories} />
       </div>

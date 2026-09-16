@@ -4,12 +4,21 @@ import Link from "next/link";
 import { connectToDatabase } from "@/lib/db";
 import { Category } from "@/models/Category";
 import { Product } from "@/models/Product";
+import { HomeCollectionsManager } from "@/components/admin/HomeCollectionsManager";
 
 export default async function AdminCategoriesPage() {
   await connectToDatabase();
   const categories = await Category.find().sort({ name: 1 }).lean();
   const counts = await Product.aggregate([{ $group: { _id: "$category", count: { $sum: 1 } } }]);
   const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
+  const homepageCategories = categories
+    .filter((category) => !category.parent && category.isCollection)
+    .map((category) => ({
+      _id: String(category._id),
+      name: category.name,
+      showOnHome: !!category.showOnHome,
+      homeOrder: category.homeOrder ?? 100,
+    }));
 
   return (
     <div>
@@ -46,6 +55,8 @@ export default async function AdminCategoriesPage() {
       </table>
 
       {categories.length === 0 && <p className="mt-6 text-sm text-stone">No categories yet.</p>}
+
+      {homepageCategories.length > 0 && <HomeCollectionsManager categories={homepageCategories} />}
     </div>
   );
 }

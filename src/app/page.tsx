@@ -13,7 +13,7 @@ export default async function HomePage() {
   const bannerDocs = await Banner.find({ active: true }).sort({ sortOrder: 1, createdAt: -1 }).lean();
   const banners = toPlain<BannerItem[]>(bannerDocs);
 
-  const collections = await Category.find({ showOnHome: true, parent: null })
+  const collections = await Category.find({ isCollection: true, showOnHome: true, parent: null })
     .sort({ homeOrder: 1, name: 1 })
     .lean();
 

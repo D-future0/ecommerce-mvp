@@ -70,7 +70,12 @@ export function PurchasePanel({
     });
 
     setAdding(false);
-    setMessage(res.ok ? "Added to your bag" : "Couldn't add that to your bag");
+    if (res.ok) {
+      setMessage("Added to your bag");
+      router.refresh();
+    } else {
+      setMessage("Couldn't add that to your bag");
+    }
   }
 
   async function toggleWishlist() {

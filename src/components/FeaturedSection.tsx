@@ -20,7 +20,7 @@ const themeClasses = {
   gold: "bg-amber-50 border-amber-200 text-amber-900",
 };
 
-export async function FeaturedSection({ title = "Featured collection", categorySlug, products, theme = "purple", displayMode = "grid" }: FeaturedSectionProps = {}) {
+export async function FeaturedSection({ title = "Featured category", categorySlug, products, theme = "purple", displayMode = "grid" }: FeaturedSectionProps = {}) {
   const docs = products ?? (await getFeaturedProducts(4));
   const list = toPlain<ProductListItem[]>(docs);
 
