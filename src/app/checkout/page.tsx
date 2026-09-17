@@ -4,7 +4,9 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { getCartItems } from "@/lib/cart";
+import { connectToDatabase } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
+import { User } from "@/models/User";
 import { CheckoutForm } from "@/components/CheckoutForm";
 
 export default async function CheckoutPage() {
@@ -14,6 +16,9 @@ export default async function CheckoutPage() {
   const items = await getCartItems(session.user.id);
   if (items.length === 0) redirect("/cart");
 
+  await connectToDatabase();
+  const user = await User.findById(session.user.id).select("name email billingAddress").lean();
+
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const currency = items[0].currency;
 
@@ -22,7 +27,13 @@ export default async function CheckoutPage() {
       <h1 className="font-serif text-3xl">Checkout</h1>
 
       <div className="mt-8 grid grid-cols-1 gap-10 md:grid-cols-2">
-        <CheckoutForm subtotal={subtotal} currency={currency} />
+        <CheckoutForm
+          subtotal={subtotal}
+          currency={currency}
+          customerName={user?.name ?? session.user.name ?? ""}
+          customerEmail={user?.email ?? session.user.email ?? ""}
+          billingAddress={user?.billingAddress ?? null}
+        />
 
         <div>
           <p className="mb-4 text-sm text-stone">Order summary</p>
@@ -42,7 +53,7 @@ export default async function CheckoutPage() {
             <span>{formatPrice(subtotal, currency)}</span>
           </div>
           <p className="mt-2 text-xs text-stone">
-            Shipping is calculated from the delivery state you choose on the left.
+            Delivery fees update when you choose a delivery method and location.
           </p>
         </div>
       </div>

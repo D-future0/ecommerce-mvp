@@ -46,6 +46,8 @@ export async function markOrderPaid(reference: string) {
       shippingFee: order.shippingFee,
       total: order.total,
       currency: order.currency,
+      deliveryMethod: order.deliveryMethod,
+      deliveryType: order.deliveryType,
       shippingAddress: order.shippingAddress,
     }).catch((err) => console.error("Order confirmation email failed", err));
   }

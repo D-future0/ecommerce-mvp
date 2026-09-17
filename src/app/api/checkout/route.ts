@@ -6,18 +6,40 @@ import { authOptions } from "@/lib/auth";
 import { getCartItems } from "@/lib/cart";
 import { connectToDatabase } from "@/lib/db";
 import { Order } from "@/models/Order";
+import { User } from "@/models/User";
 import { initializeTransaction } from "@/lib/paystack";
-import { getShippingFee } from "@/lib/shipping";
+import { getDeliveryFee, LAGOS_LGAS, NIGERIAN_STATES } from "@/lib/shipping";
 import { rateLimit } from "@/lib/redis";
 
-const addressSchema = z.object({
-  line1: z.string().min(3),
-  line2: z.string().optional(),
-  city: z.string().min(2),
-  state: z.string().min(2),
-  country: z.string().min(2),
-  phone: z.string().min(7),
-});
+const checkoutSchema = z
+  .object({
+    deliveryMethod: z.enum(["store_pickup", "delivery"]).default("delivery"),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    email: z.string().email().optional(),
+    line1: z.string().optional(),
+    line2: z.string().optional(),
+    city: z.string().optional(),
+    state: z.enum(NIGERIAN_STATES).optional(),
+    lga: z.string().optional(),
+    country: z.literal("Nigeria").default("Nigeria"),
+    phone: z.string().optional(),
+    saveBillingAddress: z.boolean().optional().default(false),
+  })
+  .superRefine((data, ctx) => {
+    if (data.deliveryMethod === "store_pickup") return;
+
+    for (const field of ["firstName", "lastName", "line1", "city", "state", "phone"] as const) {
+      if (!data[field]?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: "Required" });
+    }
+    if (!data.email) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["email"], message: "Required" });
+    if (data.line1 && data.line1.trim().length < 3) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["line1"], message: "Required" });
+    if (data.city && data.city.trim().length < 2) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["city"], message: "Required" });
+    if (data.phone && data.phone.trim().length < 7) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["phone"], message: "Required" });
+    if (data.state === "Lagos" && (!data.lga || !(data.lga in LAGOS_LGAS))) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["lga"], message: "Select a valid Lagos LGA" });
+    }
+  });
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -31,7 +53,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const parsed = addressSchema.safeParse(body);
+  const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
@@ -51,12 +73,33 @@ export async function POST(req: NextRequest) {
   }
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingFee = getShippingFee(parsed.data.state, parsed.data.country);
+  const isPickup = parsed.data.deliveryMethod === "store_pickup";
+  const deliveryType = isPickup ? "store_pickup" : parsed.data.state === "Lagos" ? "door_to_door" : "terminal_pickup";
+  const shippingFee = isPickup ? 0 : getDeliveryFee(parsed.data.state ?? "", parsed.data.lga);
+  if (!isPickup && shippingFee === 0) {
+    return NextResponse.json({ error: "Select a valid delivery location" }, { status: 400 });
+  }
   const total = subtotal + shippingFee;
   const currency = cartItems[0].currency;
   const reference = `order_${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
 
   await connectToDatabase();
+
+  const user = await User.findById(session.user.id).select("billingAddress");
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  if (!isPickup && parsed.data.saveBillingAddress && !user.billingAddress) {
+    user.billingAddress = {
+      label: "Billing",
+      line1: parsed.data.line1!.trim(),
+      line2: parsed.data.line2?.trim() || undefined,
+      city: parsed.data.city!.trim(),
+      state: parsed.data.state!,
+      country: parsed.data.country,
+      phone: parsed.data.phone!.trim(),
+    };
+    await user.save();
+  }
 
   const order = await Order.create({
     user: session.user.id,
@@ -73,7 +116,11 @@ export async function POST(req: NextRequest) {
     total,
     currency,
     status: "pending",
-    shippingAddress: parsed.data,
+    deliveryMethod: isPickup ? "store_pickup" : "delivery",
+    deliveryType,
+    shippingAddress: isPickup
+      ? { line1: "Pickup from store", city: "", state: "", country: "Nigeria", phone: "" }
+      : { ...parsed.data, lga: parsed.data.state === "Lagos" ? parsed.data.lga : undefined },
     paystackReference: reference,
   });
 

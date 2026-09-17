@@ -26,12 +26,15 @@ interface OrderEmailData {
   shippingFee: number;
   total: number;
   currency: string;
+  deliveryMethod?: "store_pickup" | "delivery";
+  deliveryType?: "store_pickup" | "door_to_door" | "terminal_pickup";
   shippingAddress: {
-    line1: string;
+    line1?: string;
     line2?: string;
-    city: string;
-    state: string;
-    country: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    lga?: string;
   };
 }
 
@@ -78,10 +81,9 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData) {
       <tr><td style="font-size:16px;padding-top:8px;">Total</td><td style="text-align:right;font-size:16px;padding-top:8px;">${formatPrice(data.total, data.currency)}</td></tr>
     </table>
 
-    <p style="margin-top:24px;font-size:14px;color:#8A8578;">Shipping to</p>
+    <p style="margin-top:24px;font-size:14px;color:#8A8578;">${data.deliveryMethod === "store_pickup" || data.deliveryType === "store_pickup" ? "Pickup from store" : "Shipping to"}</p>
     <p style="font-size:14px;">
-      ${data.shippingAddress.line1}${data.shippingAddress.line2 ? `, ${data.shippingAddress.line2}` : ""}<br/>
-      ${data.shippingAddress.city}, ${data.shippingAddress.state}, ${data.shippingAddress.country}
+      ${data.deliveryMethod === "store_pickup" || data.deliveryType === "store_pickup" ? "MVP Store pickup desk, Lagos, Nigeria" : `${data.shippingAddress.line1}${data.shippingAddress.line2 ? `, ${data.shippingAddress.line2}` : ""}<br/>${data.shippingAddress.city}, ${data.shippingAddress.state}${data.shippingAddress.lga ? `, ${data.shippingAddress.lga}` : ""}, ${data.shippingAddress.country}`}
     </p>
   `;
 

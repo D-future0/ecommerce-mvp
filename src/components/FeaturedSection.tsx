@@ -6,7 +6,7 @@ import type { ProductListItem } from "@/types/product";
 
 interface FeaturedSectionProps {
   title?: string;
-  categorySlug?: string;
+  collectionSlug?: string;
   products?: ProductListItem[];
   theme?: "purple" | "rose" | "slate" | "emerald" | "gold";
   displayMode?: "grid" | "carousel";
@@ -21,7 +21,7 @@ const themeClasses = {
   gold: "bg-amber-50 border-amber-200 text-amber-900",
 };
 
-export async function FeaturedSection({ title = "Featured category", categorySlug, products, theme = "purple", displayMode = "grid", image }: FeaturedSectionProps = {}) {
+export async function FeaturedSection({ title = "Featured category", collectionSlug, products, theme = "purple", displayMode = "grid", image }: FeaturedSectionProps = {}) {
   const docs = products ?? (await getFeaturedProducts(4));
   const list = toPlain<ProductListItem[]>(docs);
 
@@ -35,8 +35,8 @@ export async function FeaturedSection({ title = "Featured category", categorySlu
             {image && <img src={image} alt="" className="h-12 w-12 rounded-full object-cover" />}
             <h2 className="font-serif text-2xl">{title}</h2>
           </div>
-          {categorySlug && (
-            <Link href={`/category/${categorySlug}`} className="shrink-0 text-sm underline underline-offset-4">
+          {collectionSlug && (
+            <Link href={`/collection/${collectionSlug}`} className="shrink-0 text-sm underline underline-offset-4">
               View all
             </Link>
           )}

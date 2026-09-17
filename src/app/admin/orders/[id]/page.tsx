@@ -18,6 +18,8 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
   if (!order) notFound();
 
   const user = order.user as unknown as { name: string; email: string } | null;
+  const isPickup = order.deliveryMethod === "store_pickup" || order.deliveryType === "store_pickup";
+  const deliveryType = order.deliveryType ?? (isPickup ? "store_pickup" : order.shippingAddress.state === "Lagos" ? "door_to_door" : "terminal_pickup");
 
   return (
     <div className="max-w-2xl">
@@ -36,15 +38,26 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
           <p className="text-stone">{user?.email}</p>
         </div>
         <div>
-          <p className="text-xs text-stone">Shipping address</p>
-          <p className="mt-1">
-            {order.shippingAddress.line1}
-            {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
-          </p>
-          <p>
-            {order.shippingAddress.city}, {order.shippingAddress.state}, {order.shippingAddress.country}
-          </p>
-          <p className="text-stone">{order.shippingAddress.phone}</p>
+          <p className="text-xs text-stone">Delivery method</p>
+          <p className="mt-1">{isPickup ? "Store Pickup" : "Delivery"}</p>
+          <p className="mt-3 text-xs text-stone">Delivery type</p>
+          <p className="mt-1">{deliveryType === "store_pickup" ? "Pickup from store" : deliveryType === "door_to_door" ? "Door-to-door" : "Terminal/Pickup"}</p>
+          {isPickup ? (
+            <p className="mt-3 text-stone">Pickup from store</p>
+          ) : (
+            <>
+              <p className="mt-3 text-xs text-stone">Shipping address</p>
+              <p className="mt-1">
+                {order.shippingAddress.line1}
+                {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
+              </p>
+              <p>
+                {order.shippingAddress.city}, {order.shippingAddress.state}, {order.shippingAddress.country}
+              </p>
+              {order.shippingAddress.lga && <p>LGA: {order.shippingAddress.lga}</p>}
+              <p className="text-stone">{order.shippingAddress.phone}</p>
+            </>
+          )}
         </div>
       </div>
 

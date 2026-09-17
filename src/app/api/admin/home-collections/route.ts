@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/require-admin";
 import { connectToDatabase } from "@/lib/db";
-import { Category } from "@/models/Category";
+import { Collection } from "@/models/Collection";
 
 const collectionSettingsSchema = z.object({
-  collectionIds: z.array(z.string()),
+  collectionIds: z.array(
+    z.object({
+      id: z.string(),
+      homeOrder: z.number().int().min(1).max(999),
+      homeTheme: z.enum(["purple", "rose", "slate", "emerald", "gold"]),
+      homeDisplayMode: z.enum(["grid", "carousel"]),
+    })
+  ),
 });
 
 export async function GET() {
@@ -13,8 +20,8 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectToDatabase();
-  const collections = await Category.find({ parent: null }).sort({ homeOrder: 1, name: 1 }).lean();
-  return NextResponse.json({ collections });
+  const collections = await Collection.find().sort({ homeOrder: 1, title: 1 }).lean();
+  return NextResponse.json({ collections: JSON.parse(JSON.stringify(collections)) });
 }
 
 export async function POST(req: Request) {
@@ -29,17 +36,22 @@ export async function POST(req: Request) {
 
   await connectToDatabase();
 
-  for (const [index, collectionId] of parsed.data.collectionIds.entries()) {
-    await Category.findByIdAndUpdate(collectionId, {
+  const orderedCollections = [...parsed.data.collectionIds].sort((a, b) => a.homeOrder - b.homeOrder);
+
+  for (const [index, collection] of orderedCollections.entries()) {
+    await Collection.findByIdAndUpdate(collection.id, {
       showOnHome: true,
-      homeOrder: index + 1,
+      homeOrder: collection.homeOrder || index + 1,
+      homeTheme: collection.homeTheme,
+      homeDisplayMode: collection.homeDisplayMode,
     });
   }
 
-  const allCollections = await Category.find().lean();
+  const selectedIds = parsed.data.collectionIds.map((collection) => collection.id);
+  const allCollections = await Collection.find().lean();
   for (const collection of allCollections) {
-    if (!parsed.data.collectionIds.includes(String(collection._id))) {
-      await Category.findByIdAndUpdate(collection._id, { showOnHome: false, homeOrder: 100 });
+    if (!selectedIds.includes(String(collection._id))) {
+      await Collection.findByIdAndUpdate(collection._id, { showOnHome: false, homeOrder: 100 });
     }
   }
 

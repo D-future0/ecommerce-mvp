@@ -7,20 +7,24 @@ interface HomeCollectionItem {
   name: string;
   showOnHome?: boolean;
   homeOrder?: number;
+  homeTheme?: "purple" | "rose" | "slate" | "emerald" | "gold";
+  homeDisplayMode?: "grid" | "carousel";
 }
 
 export function HomeCollectionsManager({
-  categories,
+  collections,
 }: {
-  categories: HomeCollectionItem[];
+  collections: HomeCollectionItem[];
 }) {
   const [items, setItems] = useState(() =>
-    [...categories]
+    [...collections]
       .sort((a, b) => (a.homeOrder ?? 100) - (b.homeOrder ?? 100))
       .map((category) => ({
         ...category,
         showOnHome: !!category.showOnHome,
         homeOrder: category.homeOrder ?? 100,
+        homeTheme: category.homeTheme ?? "purple",
+        homeDisplayMode: category.homeDisplayMode ?? "grid",
       }))
   );
   const [saving, setSaving] = useState(false);
@@ -41,7 +45,12 @@ export function HomeCollectionsManager({
   }
 
   async function handleSave() {
-    const collectionIds = orderedVisibleItems.map((item) => item._id);
+    const collectionIds = orderedVisibleItems.map((item) => ({
+      id: item._id,
+      homeOrder: item.homeOrder ?? 100,
+      homeTheme: item.homeTheme ?? "purple",
+      homeDisplayMode: item.homeDisplayMode ?? "grid",
+    }));
 
     setSaving(true);
     setError("");
@@ -68,7 +77,7 @@ export function HomeCollectionsManager({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm text-ink">Homepage collections</h2>
-          <p className="mt-1 text-xs text-stone">Choose which top-level categories appear and in what order.</p>
+          <p className="mt-1 text-xs text-stone">Choose which collections appear, their order, style, and theme.</p>
         </div>
         <button
           type="button"
@@ -83,17 +92,17 @@ export function HomeCollectionsManager({
       <div className="mt-5 space-y-3">
         {items.map((item) => (
           <div key={item._id} className="flex flex-col gap-3 rounded border border-line p-3 sm:flex-row sm:items-center sm:justify-between">
-            <label className="flex items-center gap-3 text-sm text-ink">
+              <div className="flex items-center gap-3 text-sm text-ink">
               <input
                 type="checkbox"
                 checked={item.showOnHome}
                 onChange={(e) => updateItem(item._id, { showOnHome: e.target.checked })}
                 className="accent-accent"
               />
-              <span>{item.name}</span>
-            </label>
+                <span>{item.name}</span>
+              </div>
 
-            <div className="flex items-center gap-2 text-sm text-stone">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-stone">
               <label htmlFor={`order-${item._id}`} className="text-xs uppercase tracking-[0.12em] text-stone">
                 Order
               </label>
@@ -106,6 +115,31 @@ export function HomeCollectionsManager({
                 className="w-20 border border-line bg-transparent px-2 py-1 text-sm outline-none focus:border-ink"
                 disabled={!item.showOnHome}
               />
+              <label htmlFor={`style-${item._id}`} className="sr-only">Style for {item.name}</label>
+              <select
+                id={`style-${item._id}`}
+                value={item.homeDisplayMode}
+                onChange={(e) => updateItem(item._id, { homeDisplayMode: e.target.value as HomeCollectionItem["homeDisplayMode"] })}
+                disabled={!item.showOnHome}
+                className="border border-line bg-transparent px-2 py-1 text-sm text-ink outline-none focus:border-ink"
+              >
+                <option value="grid">Grid</option>
+                <option value="carousel">Carousel</option>
+              </select>
+              <label htmlFor={`theme-${item._id}`} className="sr-only">Theme for {item.name}</label>
+              <select
+                id={`theme-${item._id}`}
+                value={item.homeTheme}
+                onChange={(e) => updateItem(item._id, { homeTheme: e.target.value as HomeCollectionItem["homeTheme"] })}
+                disabled={!item.showOnHome}
+                className="border border-line bg-transparent px-2 py-1 text-sm text-ink outline-none focus:border-ink"
+              >
+                <option value="purple">Purple</option>
+                <option value="rose">Rose</option>
+                <option value="slate">Slate</option>
+                <option value="emerald">Emerald</option>
+                <option value="gold">Gold</option>
+              </select>
             </div>
           </div>
         ))}

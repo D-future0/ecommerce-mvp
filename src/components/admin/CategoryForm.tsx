@@ -17,11 +17,6 @@ export interface CategoryFormValues {
   image?: string;
   parent?: string | null;
   filters: { key: string; label: string; options: string[] }[];
-  isCollection?: boolean;
-  showOnHome?: boolean;
-  homeOrder?: number;
-  homeTheme?: "purple" | "rose" | "slate" | "emerald" | "gold";
-  homeDisplayMode?: "grid" | "carousel";
 }
 
 function slugify(input: string) {
@@ -42,11 +37,6 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
   const [description, setDescription] = useState(initial?.description ?? "");
   const [image, setImage] = useState(initial?.image ?? "");
   const [parent, setParent] = useState(initial?.parent ?? "");
-  const [isCollection, setIsCollection] = useState(initial?.isCollection ?? false);
-  const [showOnHome, setShowOnHome] = useState(initial?.showOnHome ?? false);
-  const [homeOrder, setHomeOrder] = useState(initial?.homeOrder ?? 100);
-  const [homeTheme, setHomeTheme] = useState(initial?.homeTheme ?? "purple");
-  const [homeDisplayMode, setHomeDisplayMode] = useState(initial?.homeDisplayMode ?? "grid");
   const [uploading, setUploading] = useState(false);
   const [filters, setFilters] = useState<FilterRow[]>(
     initial?.filters.map((f) => ({ key: f.key, label: f.label, options: f.options.join(", ") })) ?? []
@@ -91,11 +81,6 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
       description: description || undefined,
       image: image || undefined,
       parent: parent || null,
-      isCollection,
-      showOnHome,
-      homeOrder,
-      homeTheme,
-      homeDisplayMode,
       filters: filters
         .filter((f) => f.key.trim() && f.label.trim())
         .map((f) => ({
@@ -170,10 +155,6 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
           ))}
         </select>
       </div>
-      <label className="flex items-center gap-2 text-sm text-ink">
-        <input type="checkbox" checked={isCollection} onChange={(e) => setIsCollection(e.target.checked)} className="accent-accent" />
-        Use this top-level category as a homepage collection
-      </label>
       <div>
         <label className="text-xs text-stone">Description</label>
         <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className={`mt-1 ${inputClass}`} />
@@ -197,46 +178,6 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
           <img src={image} alt="" className="mt-2 h-16 w-16 border border-line object-cover" />
         )}
         <input value={image} onChange={(e) => setImage(e.target.value)} className={`mt-2 ${inputClass}`} />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="text-xs text-stone">Show on home page</label>
-          <div className="mt-2 flex items-center gap-2">
-            <input type="checkbox" checked={showOnHome} onChange={(e) => setShowOnHome(e.target.checked)} className="accent-accent" />
-            <span className="text-sm text-stone">Display this category on the landing page</span>
-          </div>
-        </div>
-        <div>
-          <label className="text-xs text-stone">Homepage order</label>
-          <input
-            type="number"
-            min={1}
-            value={homeOrder}
-            onChange={(e) => setHomeOrder(Number(e.target.value) || 100)}
-            className={`mt-2 ${inputClass}`}
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="text-xs text-stone">Theme color</label>
-          <select value={homeTheme} onChange={(e) => setHomeTheme(e.target.value as any)} className={`mt-2 ${inputClass}`}>
-            <option value="purple">Purple</option>
-            <option value="rose">Rose</option>
-            <option value="slate">Slate</option>
-            <option value="emerald">Emerald</option>
-            <option value="gold">Gold</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-stone">Display mode</label>
-          <select value={homeDisplayMode} onChange={(e) => setHomeDisplayMode(e.target.value as any)} className={`mt-2 ${inputClass}`}>
-            <option value="grid">Grid</option>
-            <option value="carousel">Carousel</option>
-          </select>
-        </div>
       </div>
 
       <div>

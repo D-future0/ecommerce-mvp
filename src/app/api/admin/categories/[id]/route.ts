@@ -17,7 +17,6 @@ const categorySchema = z.object({
   description: z.string().optional(),
   image: z.string().url().optional().or(z.literal("")),
   parent: z.string().nullable().default(null),
-  isCollection: z.boolean().optional().default(false),
   featured: z.boolean().optional().default(false),
   filters: z.array(filterSchema).default([]),
   showOnHome: z.boolean().optional().default(false),

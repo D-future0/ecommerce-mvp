@@ -6,6 +6,7 @@ import { config } from "dotenv";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { Category } from "../models/Category";
+import { Collection } from "../models/Collection";
 import { Product } from "../models/Product";
 import { User } from "../models/User";
 
@@ -497,7 +498,7 @@ async function main() {
 
   await mongoose.connect(uri);
 
-  const allCategorySeeds = [...genderCategories, ...topLevelCollections];
+  const allCategorySeeds = genderCategories;
   let totalProducts = 0;
 
   for (const [index, categorySeed] of allCategorySeeds.entries()) {
@@ -508,7 +509,6 @@ async function main() {
         slug: categorySeed.slug,
         description: categorySeed.description,
         featured: categorySeed.featured ?? false,
-        isCollection: topLevelCollections.some((collection) => collection.slug === categorySeed.slug),
         filters: categorySeed.filters ?? [
           { key: "color", label: "Color", options: ["Black", "White", "Sand", "Ivory"] },
           { key: "size", label: "Size", options: ["XS", "S", "M", "L"] },
@@ -530,7 +530,6 @@ async function main() {
           slug: childSlug,
           description: `Shop ${category.name} ${childName.toLowerCase()}.`,
           parent: category._id,
-          isCollection: false,
           filters: [{ key: "color", label: "Color", options: ["Black", "White", "Sand", "Ivory"] }],
           showOnHome: false,
           homeOrder: 100,
@@ -554,6 +553,42 @@ async function main() {
     }
 
     console.log(`Seeded category "${category.name}" with ${(categorySeed.products ?? []).length} products.`);
+  }
+
+  const unisexCategory = await Category.findOne({ slug: "unisex" });
+  if (!unisexCategory) throw new Error("The Unisex category is required before seeding collections");
+
+  for (const [index, collectionSeed] of topLevelCollections.entries()) {
+    const collection = await Collection.findOneAndUpdate(
+      { slug: collectionSeed.slug },
+      {
+        title: collectionSeed.name,
+        slug: collectionSeed.slug,
+        description: collectionSeed.description,
+        showOnHome: true,
+        homeOrder: index + 1,
+        homeTheme: collectionSeed.homeTheme ?? "purple",
+        homeDisplayMode: "grid",
+      },
+      { upsert: true, new: true }
+    );
+
+    for (const product of collectionSeed.products ?? []) {
+      await Product.findOneAndUpdate(
+        { slug: product.slug },
+        {
+          ...product,
+          category: unisexCategory._id,
+          collections: [collection._id],
+          currency: "NGN",
+          reviewsEnabled: true,
+        },
+        { upsert: true, new: true }
+      );
+      totalProducts += 1;
+    }
+
+    console.log(`Seeded collection "${collection.title}" with ${(collectionSeed.products ?? []).length} products.`);
   }
 
   const adminEmail = process.env.ADMIN_EMAIL;

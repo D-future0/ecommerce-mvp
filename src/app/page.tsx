@@ -4,14 +4,14 @@ import { FeaturedSection } from "@/components/FeaturedSection";
 import { BannerCarousel, BannerItem } from "@/components/BannerCarousel";
 import { connectToDatabase } from "@/lib/db";
 import { Banner } from "@/models/Banner";
-import { Category } from "@/models/Category";
+import { Collection } from "@/models/Collection";
 import { Product } from "@/models/Product";
 import { toPlain } from "@/lib/serialize";
 import type { ProductListItem } from "@/types/product";
 
 type HomeCollection = {
   _id: string;
-  name: string;
+  title: string;
   slug: string;
   homeTheme?: "purple" | "rose" | "slate" | "emerald" | "gold";
   homeDisplayMode?: "grid" | "carousel";
@@ -24,7 +24,7 @@ export default async function HomePage() {
   const banners = toPlain<BannerItem[]>(bannerDocs);
 
   const collections = toPlain<HomeCollection[]>(
-    await Category.find({ isCollection: true, showOnHome: true, parent: null })
+    await Collection.find({ showOnHome: true })
       .sort({ homeOrder: 1, name: 1 })
       .lean()
   );
@@ -51,7 +51,7 @@ export default async function HomePage() {
           {(
             await Promise.all(
               collections.map(async (collection) => {
-                const collectionProducts = await Product.find({ category: collection._id, isActive: true })
+                const collectionProducts = await Product.find({ collections: collection._id, isActive: true })
                   .sort({ createdAt: -1 })
                   .limit(4)
                   .lean();
@@ -59,8 +59,8 @@ export default async function HomePage() {
                 return (
                   <FeaturedSection
                     key={String(collection._id)}
-                    title={collection.name}
-                    categorySlug={collection.slug}
+                    title={collection.title}
+                    collectionSlug={collection.slug}
                     products={toPlain<ProductListItem[]>(collectionProducts)}
                     theme={collection.homeTheme ?? "purple"}
                     displayMode={collection.homeDisplayMode ?? "grid"}

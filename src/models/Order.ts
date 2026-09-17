@@ -26,14 +26,17 @@ export interface IOrder {
   shippingFee: number;
   total: number;
   currency: string;
+  deliveryMethod?: "store_pickup" | "delivery";
+  deliveryType?: "store_pickup" | "door_to_door" | "terminal_pickup";
   status: OrderStatus;
   shippingAddress: {
-    line1: string;
+    line1?: string;
     line2?: string;
-    city: string;
-    state: string;
-    country: string;
-    phone: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    phone?: string;
+    lga?: string;
   };
   paystackReference: string;
   paystackAuthorizationUrl?: string;
@@ -62,6 +65,8 @@ const OrderSchema = new Schema<IOrder>(
     shippingFee: { type: Number, default: 0 },
     total: { type: Number, required: true },
     currency: { type: String, default: "NGN" },
+    deliveryMethod: { type: String, enum: ["store_pickup", "delivery"], default: "delivery" },
+    deliveryType: { type: String, enum: ["store_pickup", "door_to_door", "terminal_pickup"] },
     status: {
       type: String,
       enum: ["pending", "paid", "processing", "shipped", "delivered", "cancelled", "refunded"],
@@ -69,12 +74,13 @@ const OrderSchema = new Schema<IOrder>(
       index: true,
     },
     shippingAddress: {
-      line1: { type: String, required: true },
+      line1: String,
       line2: String,
-      city: { type: String, required: true },
-      state: { type: String, required: true },
-      country: { type: String, required: true },
-      phone: { type: String, required: true },
+      city: String,
+      state: String,
+      country: String,
+      phone: String,
+      lga: String,
     },
     paystackReference: { type: String, required: true, unique: true },
     paystackAuthorizationUrl: String,
