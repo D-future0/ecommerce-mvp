@@ -12,9 +12,9 @@ interface HomeCollectionItem {
 }
 
 export function HomeCollectionsManager({
-  collections,
+  collections = [],
 }: {
-  collections: HomeCollectionItem[];
+  collections?: HomeCollectionItem[];
 }) {
   const [items, setItems] = useState(() =>
     [...collections]
