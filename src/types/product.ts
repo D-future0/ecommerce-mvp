@@ -9,4 +9,5 @@ export interface ProductListItem {
   ratingAverage: number;
   ratingCount: number;
   attributes: Record<string, string>;
+  collections?: { title: string; slug: string }[];
 }

@@ -1,12 +1,14 @@
 import { connectToDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { Category } from "@/models/Category";
+import { Collection } from "@/models/Collection";
 import { Types } from "mongoose";
 
 export type SortOption = "newest" | "price_asc" | "price_desc" | "rating" | "popular";
 
 export interface ProductQuery {
   categorySlug?: string;
+  collectionSlug?: string;
   q?: string;
   filters?: Record<string, string[]>; // attribute key -> selected values
   minPrice?: number;
@@ -29,6 +31,7 @@ export async function getProducts(query: ProductQuery) {
 
   const {
     categorySlug,
+    collectionSlug,
     q,
     filters = {},
     minPrice,
@@ -44,6 +47,13 @@ export async function getProducts(query: ProductQuery) {
     const category = await Category.findOne({ slug: categorySlug }).lean();
     if (!category) return { products: [], total: 0, page, pages: 0, category: null };
     match.category = category._id;
+  }
+
+  let collection = null;
+  if (collectionSlug) {
+    collection = await Collection.findOne({ slug: collectionSlug }).lean();
+    if (!collection) return { products: [], total: 0, page, pages: 0, category: null, collection: null };
+    match.collections = collection._id;
   }
 
   if (q?.trim()) {
@@ -78,6 +88,7 @@ export async function getProducts(query: ProductQuery) {
     page,
     pages: Math.max(Math.ceil(total / limit), 1),
     category,
+    collection,
   };
 }
 
@@ -88,7 +99,10 @@ export async function getFeaturedProducts(limit = 8) {
 
 export async function getProductBySlug(slug: string) {
   await connectToDatabase();
-  return Product.findOne({ slug, isActive: true }).populate("category", "name slug").lean();
+  return Product.findOne({ slug, isActive: true })
+    .populate("category", "name slug")
+    .populate("collections", "title slug")
+    .lean();
 }
 
 export async function getRelatedProducts(product: {

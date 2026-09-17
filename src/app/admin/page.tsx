@@ -97,6 +97,9 @@ export default async function AdminDashboard() {
         <Link href="/admin/categories/new" className="border border-line px-4 py-2 text-center text-ink">
           New category
         </Link>
+        <Link href="/admin/collections/new" className="border border-line px-4 py-2 text-center text-ink">
+          New collection
+        </Link>
       </div>
     </div>
   );

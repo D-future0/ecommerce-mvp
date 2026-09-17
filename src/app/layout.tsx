@@ -15,6 +15,7 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "Store",
   description: "MVP ecommerce storefront",
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "http://localhost:3000"),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

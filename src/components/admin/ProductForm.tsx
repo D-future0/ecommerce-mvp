@@ -21,15 +21,23 @@ interface CategoryOption {
   name: string;
 }
 
+interface CollectionOption {
+  _id: string;
+  title: string;
+}
+
 export interface ProductFormValues {
   _id?: string;
   title: string;
   slug: string;
   description: string;
+  seoTitle?: string;
+  seoDescription?: string;
   price: number; // kobo
   compareAtPrice?: number;
   images: string[];
   category: string;
+  collections: string[];
   tags: string[];
   attributes: Record<string, string>;
   variants: Variant[];
@@ -48,9 +56,11 @@ function slugify(input: string) {
 
 export function ProductForm({
   categories,
+  collections = [],
   initial,
 }: {
   categories: CategoryOption[];
+  collections?: CollectionOption[];
   initial?: ProductFormValues;
 }) {
   const router = useRouter();
@@ -60,6 +70,8 @@ export function ProductForm({
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(isEdit);
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [seoTitle, setSeoTitle] = useState(initial?.seoTitle ?? "");
+  const [seoDescription, setSeoDescription] = useState(initial?.seoDescription ?? "");
   const [priceNaira, setPriceNaira] = useState(initial ? String(initial.price / 100) : "");
   const [compareAtNaira, setCompareAtNaira] = useState(
     initial?.compareAtPrice ? String(initial.compareAtPrice / 100) : ""
@@ -68,6 +80,7 @@ export function ProductForm({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [category, setCategory] = useState(initial?.category ?? categories[0]?._id ?? "");
+  const [selectedCollections, setSelectedCollections] = useState(initial?.collections ?? []);
   const [tags, setTags] = useState((initial?.tags ?? []).join(", "));
   const [attributes, setAttributes] = useState<AttributeRow[]>(
     initial ? Object.entries(initial.attributes).map(([key, value]) => ({ key, value })) : []
@@ -136,11 +149,14 @@ export function ProductForm({
       title,
       slug,
       description,
+      seoTitle: seoTitle || undefined,
+      seoDescription: seoDescription || undefined,
       price: Math.round(Number(priceNaira) * 100),
       compareAtPrice: compareAtNaira ? Math.round(Number(compareAtNaira) * 100) : undefined,
       currency: "NGN",
       images: images.split("\n").map((s) => s.trim()).filter(Boolean),
       category,
+      collections: selectedCollections,
       tags: tags.split(",").map((s) => s.trim()).filter(Boolean),
       attributes: Object.fromEntries(
         attributes.filter((a) => a.key.trim()).map((a) => [a.key.trim(), a.value.trim()])
@@ -186,6 +202,14 @@ export function ProductForm({
           <label className="text-xs text-stone">Title</label>
           <input required value={title} onChange={(e) => onTitleChange(e.target.value)} className={`mt-1 ${inputClass}`} />
         </div>
+
+        <div className="col-span-2 border-t border-line pt-5">
+          <p className="text-xs text-stone">Search engine listing</p>
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
+            <div><label className="text-xs text-stone">SEO title</label><input maxLength={70} value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} className={`mt-1 ${inputClass}`} /></div>
+            <div><label className="text-xs text-stone">SEO description</label><textarea maxLength={160} rows={2} value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} className={`mt-1 ${inputClass}`} /></div>
+          </div>
+        </div>
         <div className="col-span-2">
           <label className="text-xs text-stone">Slug</label>
           <input
@@ -221,6 +245,19 @@ export function ProductForm({
             className={`mt-1 ${inputClass}`}
           />
         </div>
+        {collections.length > 0 && (
+          <div className="col-span-2">
+            <label className="text-xs text-stone">Collections (optional)</label>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {collections.map((collection) => (
+                <label key={collection._id} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={selectedCollections.includes(collection._id)} onChange={(e) => setSelectedCollections((current) => e.target.checked ? [...current, collection._id] : current.filter((id) => id !== collection._id))} />
+                  {collection.title}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
         <div>
           <label className="text-xs text-stone">Compare-at price (₦, optional)</label>
           <input

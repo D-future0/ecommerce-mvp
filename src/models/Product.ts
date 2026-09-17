@@ -13,11 +13,14 @@ export interface IProduct {
   title: string;
   slug: string;
   description: string;
+  seoTitle?: string;
+  seoDescription?: string;
   price: number; // base price, in kobo/cents (smallest currency unit)
   compareAtPrice?: number;
   currency: string;
   images: string[];
   category: Types.ObjectId;
+  collections: Types.ObjectId[];
   tags: string[];
   attributes: Record<string, string>; // dynamic filterable attrs, e.g. { color: "black", material: "leather" }
   variants: IProductVariant[];
@@ -49,11 +52,14 @@ const ProductSchema = new Schema<IProduct>(
     title: { type: String, required: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true },
     description: { type: String, required: true },
+    seoTitle: { type: String, trim: true, maxlength: 70 },
+    seoDescription: { type: String, trim: true, maxlength: 160 },
     price: { type: Number, required: true, min: 0 },
     compareAtPrice: { type: Number },
     currency: { type: String, default: "NGN" },
     images: [{ type: String }],
     category: { type: Schema.Types.ObjectId, ref: "Category", required: true, index: true },
+      collections: [{ type: Schema.Types.ObjectId, ref: "Collection", index: true }],
     tags: [{ type: String, index: true }],
     attributes: { type: Schema.Types.Mixed, default: {} },
     variants: [VariantSchema],

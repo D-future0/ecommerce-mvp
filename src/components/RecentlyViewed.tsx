@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ProductCard } from "@/components/ProductCard";
+import { ProductCarousel } from "@/components/ProductCarousel";
 import type { ProductListItem } from "@/types/product";
 
 export function RecentlyViewed() {
@@ -40,11 +40,7 @@ export function RecentlyViewed() {
             <h2 className="mt-2 font-serif text-2xl text-ink">Recently viewed</h2>
           </div>
         </div>
-        <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4 lg:grid-cols-6">
-          {products.map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
-        </div>
+        <div className="mt-8"><ProductCarousel products={products} /></div>
       </div>
     </section>
   );

@@ -24,7 +24,20 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  return { title: product ? `${product.title} — Store` : "Product not found" };
+  if (!product) return { title: "Product not found" };
+  const description = product.seoDescription || product.description;
+  return {
+    title: product.seoTitle || `${product.title} — Store`,
+    description,
+    alternates: { canonical: `/product/${product.slug}` },
+    openGraph: {
+      title: product.seoTitle || product.title,
+      description,
+      type: "website",
+      images: product.images[0] ? [{ url: product.images[0], alt: product.title }] : undefined,
+    },
+    twitter: { card: "summary_large_image", title: product.seoTitle || product.title, description, images: product.images[0] ? [product.images[0]] : undefined },
+  };
 }
 
 interface ReviewDoc {
@@ -74,6 +87,8 @@ export default async function ProductPage({ params }: PageProps) {
     _id: string;
     title: string;
     description: string;
+    seoTitle?: string;
+    seoDescription?: string;
     price: number;
     currency: string;
     images: string[];
@@ -85,9 +100,23 @@ export default async function ProductPage({ params }: PageProps) {
 
   const related = toPlain<ProductListItem[]>(relatedDocs);
   const reviews = toPlain<ReviewDoc[]>(reviewDocs);
+  const productUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/product/${product.slug}`;
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    description: product.seoDescription || product.description,
+    image: product.images,
+    sku: product._id,
+    category: product.category.name,
+    url: productUrl,
+    offers: { "@type": "Offer", url: productUrl, priceCurrency: product.currency, price: (product.price / 100).toFixed(2), availability: "https://schema.org/InStock" },
+    aggregateRating: product.ratingCount > 0 ? { "@type": "AggregateRating", ratingValue: product.ratingAverage, reviewCount: product.ratingCount } : undefined,
+  };
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
       <ViewTracker slug={slug} />
 
       <p className="mb-6 text-sm text-stone">

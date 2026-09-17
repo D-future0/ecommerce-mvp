@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/require-admin";
 import { connectToDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
+import { Collection } from "@/models/Collection";
 
 const variantSchema = z.object({
   name: z.string().min(1),
@@ -16,11 +17,14 @@ const productSchema = z.object({
   title: z.string().min(2),
   slug: z.string().min(2).regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers, hyphens only"),
   description: z.string().min(1),
+  seoTitle: z.string().max(70).optional(),
+  seoDescription: z.string().max(160).optional(),
   price: z.number().int().min(0),
   compareAtPrice: z.number().int().min(0).optional(),
   currency: z.string().default("NGN"),
   images: z.array(z.string().url()).default([]),
   category: z.string(),
+  collections: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
   attributes: z.record(z.string()).default({}),
   variants: z.array(variantSchema).default([]),
@@ -34,6 +38,11 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectToDatabase();
+
+  const validCollections = await Collection.countDocuments({ _id: { $in: parsed.data.collections } });
+  if (validCollections !== parsed.data.collections.length) {
+    return NextResponse.json({ error: "One or more collections were not found" }, { status: 400 });
+  }
   const products = await Product.find().sort({ createdAt: -1 }).populate("category", "name slug").lean();
   return NextResponse.json({ products });
 }
