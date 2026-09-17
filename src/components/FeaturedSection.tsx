@@ -10,6 +10,7 @@ interface FeaturedSectionProps {
   products?: ProductListItem[];
   theme?: "purple" | "rose" | "slate" | "emerald" | "gold";
   displayMode?: "grid" | "carousel";
+  image?: string;
 }
 
 const themeClasses = {
@@ -20,7 +21,7 @@ const themeClasses = {
   gold: "bg-amber-50 border-amber-200 text-amber-900",
 };
 
-export async function FeaturedSection({ title = "Featured category", categorySlug, products, theme = "purple", displayMode = "grid" }: FeaturedSectionProps = {}) {
+export async function FeaturedSection({ title = "Featured category", categorySlug, products, theme = "purple", displayMode = "grid", image }: FeaturedSectionProps = {}) {
   const docs = products ?? (await getFeaturedProducts(4));
   const list = toPlain<ProductListItem[]>(docs);
 
@@ -30,7 +31,10 @@ export async function FeaturedSection({ title = "Featured category", categorySlu
     <section className={`mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 ${themeClasses[theme]}`}>
       <div className="rounded-2xl border p-4 sm:p-6">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="font-serif text-2xl">{title}</h2>
+          <div className="flex items-center gap-3">
+            {image && <img src={image} alt="" className="h-12 w-12 rounded-full object-cover" />}
+            <h2 className="font-serif text-2xl">{title}</h2>
+          </div>
           {categorySlug && (
             <Link href={`/category/${categorySlug}`} className="shrink-0 text-sm underline underline-offset-4">
               View all

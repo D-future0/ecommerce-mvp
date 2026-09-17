@@ -17,6 +17,7 @@ export interface CategoryFormValues {
   image?: string;
   parent?: string | null;
   filters: { key: string; label: string; options: string[] }[];
+  isCollection?: boolean;
   showOnHome?: boolean;
   homeOrder?: number;
   homeTheme?: "purple" | "rose" | "slate" | "emerald" | "gold";
@@ -41,6 +42,7 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
   const [description, setDescription] = useState(initial?.description ?? "");
   const [image, setImage] = useState(initial?.image ?? "");
   const [parent, setParent] = useState(initial?.parent ?? "");
+  const [isCollection, setIsCollection] = useState(initial?.isCollection ?? false);
   const [showOnHome, setShowOnHome] = useState(initial?.showOnHome ?? false);
   const [homeOrder, setHomeOrder] = useState(initial?.homeOrder ?? 100);
   const [homeTheme, setHomeTheme] = useState(initial?.homeTheme ?? "purple");
@@ -89,6 +91,7 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
       description: description || undefined,
       image: image || undefined,
       parent: parent || null,
+      isCollection,
       showOnHome,
       homeOrder,
       homeTheme,
@@ -167,6 +170,10 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
           ))}
         </select>
       </div>
+      <label className="flex items-center gap-2 text-sm text-ink">
+        <input type="checkbox" checked={isCollection} onChange={(e) => setIsCollection(e.target.checked)} className="accent-accent" />
+        Use this top-level category as a homepage collection
+      </label>
       <div>
         <label className="text-xs text-stone">Description</label>
         <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} className={`mt-1 ${inputClass}`} />
@@ -175,7 +182,7 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
         <div className="flex items-center justify-between">
           <label className="text-xs text-stone">Image</label>
           <label className="cursor-pointer text-xs text-ink underline underline-offset-2">
-            {uploading ? "Uploading…" : "Upload image"}
+            {uploading ? "Uploading…" : "Upload with Cloudinary"}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"

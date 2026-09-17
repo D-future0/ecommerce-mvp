@@ -13,7 +13,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Store",
+  title: "MVP Store",
   description: "MVP ecommerce storefront",
   metadataBase: new URL(process.env.NEXTAUTH_URL || "http://localhost:3000"),
 };
@@ -54,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="border-t border-paper/15 px-4 py-5 text-center text-xs text-paper/50">
               © {new Date().getFullYear()} MVP Store. All rights reserved.
             </div>
-            <div className="border-t border-paper/15 px-4 py-5 text-center text-xs text-paper/50">
+            <div className="border-t border-paper/15 px-4 py-5 text-center text-xs text-paper/50"> Powered by 
               <a href="https://okafor-i-collins-portfolio-next-js.vercel.app" className="underline hover:text-paper">Ifechukwu Okafor</a>
             </div>
           </footer>

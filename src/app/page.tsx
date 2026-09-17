@@ -15,6 +15,7 @@ type HomeCollection = {
   slug: string;
   homeTheme?: "purple" | "rose" | "slate" | "emerald" | "gold";
   homeDisplayMode?: "grid" | "carousel";
+  image?: string;
 };
 
 export default async function HomePage() {
@@ -63,6 +64,7 @@ export default async function HomePage() {
                     products={toPlain<ProductListItem[]>(collectionProducts)}
                     theme={collection.homeTheme ?? "purple"}
                     displayMode={collection.homeDisplayMode ?? "grid"}
+                    image={collection.image}
                   />
                 );
               })

@@ -34,6 +34,7 @@ export default async function AdminCategoriesPage() {
           <tr className="border-b border-line text-xs text-stone">
             <th className="pb-2 font-normal">Name</th>
             <th className="pb-2 font-normal">Slug</th>
+            <th className="pb-2 font-normal">Type</th>
             <th className="pb-2 font-normal">Filters</th>
             <th className="pb-2 font-normal">Products</th>
           </tr>
@@ -47,6 +48,7 @@ export default async function AdminCategoriesPage() {
                 </Link>
               </td>
               <td className="py-3 text-stone">{c.slug}</td>
+              <td className="py-3 text-stone">{c.isCollection ? "Collection" : "Category"}</td>
               <td className="py-3 text-stone">{c.filters.length}</td>
               <td className="py-3 text-stone">{countMap.get(c._id.toString()) ?? 0}</td>
             </tr>
