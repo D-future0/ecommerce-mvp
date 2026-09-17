@@ -76,12 +76,47 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   await connectToDatabase();
 
+  const categoryToDelete = await Category.findById(id).select("slug").lean();
+  if (!categoryToDelete) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (categoryToDelete.slug === "uncategorized") {
+    return NextResponse.json({ error: "The Uncategorized category cannot be deleted" }, { status: 400 });
+  }
+
+  let replacementCategoryId: string | undefined;
+  try {
+    const body = await _req.json();
+    replacementCategoryId = typeof body.replacementCategoryId === "string" ? body.replacementCategoryId : undefined;
+  } catch {
+    // An empty request body is valid when the category has no products.
+  }
+
+  if (replacementCategoryId) {
+    if (replacementCategoryId === id) {
+      return NextResponse.json({ error: "Choose a different category" }, { status: 400 });
+    }
+    const replacement = await Category.exists({ _id: replacementCategoryId });
+    if (!replacement) return NextResponse.json({ error: "Replacement category not found" }, { status: 400 });
+  }
+
   const inUse = await Product.countDocuments({ category: id });
   if (inUse > 0) {
-    return NextResponse.json(
-      { error: `${inUse} product(s) still use this category` },
-      { status: 409 }
-    );
+    const fallback = replacementCategoryId
+      ? null
+      : await Category.findOneAndUpdate(
+          { slug: "uncategorized" },
+          {
+            $setOnInsert: {
+              name: "Uncategorized",
+              slug: "uncategorized",
+              description: "Products awaiting a category assignment.",
+              filters: [],
+            },
+          },
+          { upsert: true, new: true }
+        );
+    const targetCategoryId = replacementCategoryId ?? fallback?._id.toString();
+    if (!targetCategoryId) return NextResponse.json({ error: "Couldn't create the fallback category" }, { status: 500 });
+    await Product.updateMany({ category: id }, { $set: { category: targetCategoryId } });
   }
 
   const childCount = await Category.countDocuments({ parent: id });

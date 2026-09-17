@@ -123,7 +123,11 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
     if (!initial?._id) return;
     if (!confirm(`Delete "${initial.name}"?`)) return;
 
-    const res = await fetch(`/api/admin/categories/${initial._id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/categories/${initial._id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(typeof data.error === "string" ? data.error : "Couldn't delete this category.");

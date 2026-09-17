@@ -38,11 +38,6 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectToDatabase();
-
-  const validCollections = await Collection.countDocuments({ _id: { $in: parsed.data.collections } });
-  if (validCollections !== parsed.data.collections.length) {
-    return NextResponse.json({ error: "One or more collections were not found" }, { status: 400 });
-  }
   const products = await Product.find().sort({ createdAt: -1 }).populate("category", "name slug").lean();
   return NextResponse.json({ products });
 }
@@ -56,6 +51,11 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   await connectToDatabase();
+
+  const validCollections = await Collection.countDocuments({ _id: { $in: parsed.data.collections } });
+  if (validCollections !== parsed.data.collections.length) {
+    return NextResponse.json({ error: "One or more collections were not found" }, { status: 400 });
+  }
 
   const existing = await Product.findOne({ slug: parsed.data.slug });
   if (existing) return NextResponse.json({ error: "Slug already in use" }, { status: 409 });

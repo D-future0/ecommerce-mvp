@@ -85,6 +85,7 @@ export default async function ProductPage({ params }: PageProps) {
 
   const product = toPlain<{
     _id: string;
+    slug: string;
     title: string;
     description: string;
     seoTitle?: string;
