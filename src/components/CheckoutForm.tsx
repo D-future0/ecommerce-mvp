@@ -37,12 +37,14 @@ function splitName(name: string) {
 
 export function CheckoutForm({
   subtotal,
+  itemCount,
   currency,
   customerName,
   customerEmail,
   billingAddress,
 }: {
   subtotal: number;
+  itemCount: number;
   currency: string;
   customerName: string;
   customerEmail: string;
@@ -71,7 +73,7 @@ export function CheckoutForm({
   }
 
   const isPickup = form.deliveryMethod === "store_pickup";
-  const shippingFee = isPickup ? 0 : getDeliveryFee(form.state, form.lga);
+  const shippingFee = isPickup ? 0 : getDeliveryFee(form.state, form.lga) * itemCount;
   const total = subtotal + shippingFee;
 
   async function onSubmit(e: React.FormEvent) {
@@ -177,7 +179,7 @@ export function CheckoutForm({
 
       <div className="space-y-1 border-t border-line pt-4 text-sm">
         <div className="flex justify-between text-stone">
-          <span>Delivery fee</span>
+          <span>Delivery fee ({itemCount} {itemCount === 1 ? "item" : "items"})</span>
           <span>{formatPrice(shippingFee, currency)}</span>
         </div>
         <div className="flex justify-between text-lg text-ink">

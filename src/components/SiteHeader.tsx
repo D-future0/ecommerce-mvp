@@ -5,6 +5,7 @@ import { Heart, User, ShoppingBag } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { Category } from "@/models/Category";
+import { Product } from "@/models/Product";
 import { getCartItems } from "@/lib/cart";
 import { SearchBar } from "@/components/SearchBar";
 
@@ -13,7 +14,10 @@ export async function SiteHeader() {
   // builds like /_not-found, which render without a live DB connection) —
   // the header degrades to no category links instead of a 500.
   const categories = await connectToDatabase()
-    .then(() => Category.find({ parent: null }).sort({ name: 1 }).limit(6).lean())
+    .then(async () => {
+      const categoryIds = await Product.distinct("category", { isActive: true });
+      return Category.find({ _id: { $in: categoryIds } }).sort({ name: 1 }).lean();
+    })
     .catch(() => []);
 
   const session = await getServerSession(authOptions).catch(() => null);

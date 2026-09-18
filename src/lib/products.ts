@@ -73,7 +73,9 @@ export async function getProducts(query: ProductQuery) {
     }
   }
 
-  const sortStage = SORT_MAP[sort] ?? SORT_MAP.newest;
+  const sortStage = q?.trim()
+    ? { score: { $meta: "textScore" as const }, ...SORT_MAP[sort] }
+    : SORT_MAP[sort] ?? SORT_MAP.newest;
   const skip = (page - 1) * limit;
 
   const [products, total, category] = await Promise.all([

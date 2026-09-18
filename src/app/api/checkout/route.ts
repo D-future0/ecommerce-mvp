@@ -73,9 +73,10 @@ export async function POST(req: NextRequest) {
   }
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const isPickup = parsed.data.deliveryMethod === "store_pickup";
   const deliveryType = isPickup ? "store_pickup" : parsed.data.state === "Lagos" ? "door_to_door" : "terminal_pickup";
-  const shippingFee = isPickup ? 0 : getDeliveryFee(parsed.data.state ?? "", parsed.data.lga);
+  const shippingFee = isPickup ? 0 : getDeliveryFee(parsed.data.state ?? "", parsed.data.lga) * itemCount;
   if (!isPickup && shippingFee === 0) {
     return NextResponse.json({ error: "Select a valid delivery location" }, { status: 400 });
   }

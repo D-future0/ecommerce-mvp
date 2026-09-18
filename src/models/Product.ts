@@ -75,8 +75,11 @@ const ProductSchema = new Schema<IProduct>(
   { timestamps: true }
 );
 
-// Full-text search across title, description, tags
-ProductSchema.index({ title: "text", description: "text", tags: "text" });
+// Titles and tags are stronger purchase signals than long descriptions.
+ProductSchema.index(
+  { title: "text", description: "text", tags: "text" },
+  { weights: { title: 10, tags: 5, description: 1 }, name: "title_text_description_text_tags_text" }
+);
 // Common filter/sort compound indexes
 ProductSchema.index({ category: 1, isActive: 1, price: 1 });
 ProductSchema.index({ featured: 1, isActive: 1 });

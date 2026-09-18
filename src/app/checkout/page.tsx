@@ -20,6 +20,7 @@ export default async function CheckoutPage() {
   const user = await User.findById(session.user.id).select("name email billingAddress").lean();
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const currency = items[0].currency;
 
   return (
@@ -29,6 +30,7 @@ export default async function CheckoutPage() {
       <div className="mt-8 grid grid-cols-1 gap-10 md:grid-cols-2">
         <CheckoutForm
           subtotal={subtotal}
+          itemCount={itemCount}
           currency={currency}
           customerName={user?.name ?? session.user.name ?? ""}
           customerEmail={user?.email ?? session.user.email ?? ""}
