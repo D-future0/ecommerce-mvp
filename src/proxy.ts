@@ -1,8 +1,10 @@
-import getToken from "next-auth/middleware";
-import { NextResponse, NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { NextResponse } from "next/server";
+import type { NextRequestWithAuth } from "next-auth/middleware";
+import type { JWT } from "next-auth/jwt";
 
-export default async function proxy(req) {
-  const token = await getToken({ req });
+export default async function proxy(req: NextRequestWithAuth) {
+  const token: JWT | null = await getToken({ req });
   const { pathname } = req.nextUrl;
 
 
@@ -19,7 +21,7 @@ export default async function proxy(req) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAdminRoute && (!token || token.role !== "admin")) {
+  if (isAdminRoute && (!token || (token as any).role !== "admin")) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
