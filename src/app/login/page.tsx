@@ -20,29 +20,16 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    try {
-      const res = await Promise.race([
-        signIn("credentials", { email, password, redirect: false }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Request timed out")), 15000)
-        ),
-      ]);
+    const res = await signIn("credentials", { email, password, redirect: false });
 
-      console.log("[Login] signIn result:", JSON.stringify(res));
-
-      if (res?.error) {
-        setError(res.error);
-        return;
-      }
-
-      console.log("[Login] Redirecting to:", callbackUrl);
-      router.push(callbackUrl);
-      router.refresh();
-    } catch {
-      setError("We couldn't reach the server. Please try again.");
-    } finally {
+    if (res?.error) {
+      setError(res.error);
       setLoading(false);
+      return;
     }
+
+    router.push(callbackUrl);
+    router.refresh();
   }
 
   return (

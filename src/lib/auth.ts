@@ -25,43 +25,27 @@ export const authOptions: AuthOptions = {
           throw new Error("Email and password are required");
         }
 
-        console.log("[Auth] Starting authorization for:", credentials.email);
-
         // Throttle login attempts per email to slow down credential stuffing.
-        let rateLimited = false;
-        try {
-          console.log("[Auth] Checking rate limit...");
-          const { success } = await rateLimit(
-            `login:${credentials.email.toLowerCase()}`,
-            10,
-            60 * 15
-          );
-          rateLimited = !success;
-          console.log("[Auth] Rate limit result:", { success, rateLimited });
-        } catch (err) {
-          console.error("[Auth] Rate limit error:", err);
-          rateLimited = false;
-        }
-        if (rateLimited) {
+        const { success } = await rateLimit(
+          `login:${credentials.email.toLowerCase()}`,
+          10,
+          60 * 15
+        );
+        if (!success) {
           throw new Error("Too many login attempts. Try again in a few minutes.");
         }
 
-        console.log("[Auth] Connecting to database...");
         await connectToDatabase();
-        console.log("[Auth] Database connected.");
 
         const user = await User.findOne({ email: credentials.email.toLowerCase() }).select(
           "+passwordHash"
         );
-        console.log("[Auth] User found:", user ? "yes" : "no");
         if (!user) throw new Error("Invalid email or password");
         if (user.isDeactivated) throw new Error("This account has been deactivated.");
 
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
-        console.log("[Auth] Password valid:", isValid);
         if (!isValid) throw new Error("Invalid email or password");
 
-        console.log("[Auth] Authorization successful for:", credentials.email);
         return {
           id: user._id.toString(),
           name: user.name,
@@ -73,16 +57,13 @@ export const authOptions: AuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      console.log("[Auth] jwt callback called", { hasUser: !!user, tokenKeys: token ? Object.keys(token) : null });
       if (user) {
-        console.log("[Auth] jwt setting token from user:", { id: user.id, role: user.role });
         token.id = user.id;
         token.role = (user as any).role;
       }
       return token;
     },
     async session({ session, token }) {
-      console.log("[Auth] session callback called", { tokenId: token?.id });
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;

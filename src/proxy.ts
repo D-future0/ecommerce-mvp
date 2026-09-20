@@ -7,7 +7,7 @@ export default async function proxy(req) {
 
 
   const isProtectedRoute =
-    pathname.startsWith("/account") ||
+    pathname.startsWith("/") ||
     pathname.startsWith("/cart") ||
     pathname.startsWith("/checkout");
 
