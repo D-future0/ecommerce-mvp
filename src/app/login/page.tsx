@@ -20,16 +20,21 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    const res = await signIn("credentials", { email, password, redirect: false });
+    try {
+      const res = await signIn("credentials", { email, password, redirect: false });
 
-    if (res?.error) {
-      setError(res.error);
+      if (res?.error) {
+        setError(res.error);
+        return;
+      }
+
+      router.push(callbackUrl);
+      router.refresh();
+    } catch {
+      setError("We couldn't reach the server. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push(callbackUrl);
-    router.refresh();
   }
 
   return (

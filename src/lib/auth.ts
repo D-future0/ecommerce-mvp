@@ -26,12 +26,18 @@ export const authOptions: AuthOptions = {
         }
 
         // Throttle login attempts per email to slow down credential stuffing.
-        const { success } = await rateLimit(
-          `login:${credentials.email.toLowerCase()}`,
-          10,
-          60 * 15
-        );
-        if (!success) {
+        let rateLimited = false;
+        try {
+          const { success } = await rateLimit(
+            `login:${credentials.email.toLowerCase()}`,
+            10,
+            60 * 15
+          );
+          rateLimited = !success;
+        } catch {
+          rateLimited = false;
+        }
+        if (rateLimited) {
           throw new Error("Too many login attempts. Try again in a few minutes.");
         }
 
