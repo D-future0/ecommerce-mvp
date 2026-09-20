@@ -28,11 +28,14 @@ function LoginForm() {
         ),
       ]);
 
+      console.log("[Login] signIn result:", JSON.stringify(res));
+
       if (res?.error) {
         setError(res.error);
         return;
       }
 
+      console.log("[Login] Redirecting to:", callbackUrl);
       router.push(callbackUrl);
       router.refresh();
     } catch {
