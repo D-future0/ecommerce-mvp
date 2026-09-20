@@ -9,6 +9,12 @@ export const redis =
   global._redis ??
   new Redis(process.env.REDIS_URL as string, {
     maxRetriesPerRequest: 3,
+    connectTimeout: 10000,
+    retryStrategy(times) {
+      if (times > 5) return undefined; // Stop retrying after 5 attempts
+      const delay = Math.min(times * 200, 5000);
+      return delay;
+    },
   });
 
 if (process.env.NODE_ENV !== "production") global._redis = redis;
@@ -21,19 +27,25 @@ if (process.env.NODE_ENV !== "production") global._redis = redis;
  * Example: await rateLimit(`login:${ip}`, 5, 60) -> 5 requests per 60s
  */
 export async function rateLimit(key: string, limit: number, windowSeconds: number) {
-  const redisKey = `ratelimit:${key}`;
-  const current = await redis.incr(redisKey);
+  try {
+    const redisKey = `ratelimit:${key}`;
+    const current = await redis.incr(redisKey);
 
-  if (current === 1) {
-    await redis.expire(redisKey, windowSeconds);
+    if (current === 1) {
+      await redis.expire(redisKey, windowSeconds);
+    }
+
+    const ttl = await redis.ttl(redisKey);
+    const resetAt = Date.now() + Math.max(ttl, 0) * 1000;
+
+    return {
+      success: current <= limit,
+      remaining: Math.max(limit - current, 0),
+      resetAt,
+    };
+  } catch {
+    // Fail open — allow the request if Redis is unavailable.
+    // Better to skip rate limiting than to break core functionality.
+    return { success: true, remaining: limit, resetAt: Date.now() + windowSeconds * 1000 };
   }
-
-  const ttl = await redis.ttl(redisKey);
-  const resetAt = Date.now() + Math.max(ttl, 0) * 1000;
-
-  return {
-    success: current <= limit,
-    remaining: Math.max(limit - current, 0),
-    resetAt,
-  };
 }
