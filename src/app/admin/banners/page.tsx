@@ -6,7 +6,9 @@ import { Banner } from "@/models/Banner";
 
 export default async function AdminBannersPage() {
   await connectToDatabase();
-  const banners = await Banner.find().sort({ sortOrder: 1, createdAt: -1 }).lean();
+  const banners = await Banner.findMany({
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+  });
 
   return (
     <div>
@@ -19,13 +21,13 @@ export default async function AdminBannersPage() {
       </div>
       <div className="mt-6 divide-y divide-line border-y border-line">
         {banners.map((banner) => (
-          <div key={banner._id.toString()} className="flex items-center gap-4 py-4">
+          <div key={banner.id.toString()} className="flex items-center gap-4 py-4">
             <img src={banner.image} alt="" className="h-16 w-28 object-cover" />
             <div className="min-w-0 flex-1">
-              <Link href={`/admin/banners/${banner._id}`} className="text-sm text-ink">{banner.title}</Link>
+              <Link href={`/admin/banners/${banner.id}`} className="text-sm text-ink">{banner.title}</Link>
               <p className="text-xs text-stone">Order {banner.sortOrder} · {banner.active ? "Active" : "Inactive"}</p>
             </div>
-            <Link href={`/admin/banners/${banner._id}`} className="text-xs text-stone underline underline-offset-2">Edit</Link>
+            <Link href={`/admin/banners/${banner.id}`} className="text-xs text-stone underline underline-offset-2">Edit</Link>
           </div>
         ))}
       </div>

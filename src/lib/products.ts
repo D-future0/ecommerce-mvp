@@ -2,7 +2,7 @@ import { connectToDatabase } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { Category } from "@/models/Category";
 import { Collection } from "@/models/Collection";
-import { Types } from "mongoose";
+import type { Prisma } from "@prisma/client";
 
 export type SortOption = "newest" | "price_asc" | "price_desc" | "rating" | "popular";
 
@@ -10,7 +10,7 @@ export interface ProductQuery {
   categorySlug?: string;
   collectionSlug?: string;
   q?: string;
-  filters?: Record<string, string[]>; // attribute key -> selected values
+  filters?: Record<string, string[]>;
   minPrice?: number;
   maxPrice?: number;
   sort?: SortOption;
@@ -18,12 +18,12 @@ export interface ProductQuery {
   limit?: number;
 }
 
-const SORT_MAP: Record<SortOption, Record<string, 1 | -1>> = {
-  newest: { createdAt: -1 },
-  price_asc: { price: 1 },
-  price_desc: { price: -1 },
-  rating: { ratingAverage: -1 },
-  popular: { soldCount: -1 },
+const SORT_MAP: Record<SortOption, Prisma.ProductOrderByWithRelationInput> = {
+  newest: { createdAt: "desc" },
+  price_asc: { price: "asc" },
+  price_desc: { price: "desc" },
+  rating: { ratingAverage: "desc" },
+  popular: { soldCount: "desc" },
 };
 
 export async function getProducts(query: ProductQuery) {
@@ -41,47 +41,53 @@ export async function getProducts(query: ProductQuery) {
     limit = 12,
   } = query;
 
-  const match: Record<string, unknown> = { isActive: true };
-
-  if (categorySlug) {
-    const category = await Category.findOne({ slug: categorySlug }).lean();
-    if (!category) return { products: [], total: 0, page, pages: 0, category: null };
-    match.category = category._id;
+  const category = categorySlug
+    ? await Category.findUnique({ where: { slug: categorySlug } })
+    : null;
+  if (categorySlug && !category) {
+    return { products: [], total: 0, page, pages: 0, category: null };
   }
 
-  let collection = null;
-  if (collectionSlug) {
-    collection = await Collection.findOne({ slug: collectionSlug }).lean();
-    if (!collection) return { products: [], total: 0, page, pages: 0, category: null, collection: null };
-    match.collections = collection._id;
+  const collection = collectionSlug
+    ? await Collection.findUnique({ where: { slug: collectionSlug } })
+    : null;
+  if (collectionSlug && !collection) {
+    return { products: [], total: 0, page, pages: 0, category: null, collection: null };
   }
+
+  const where: Prisma.ProductWhereInput = {
+    isActive: true,
+    ...(category ? { category: category.id } : {}),
+    ...(collection
+      ? { collections: { some: { collectionId: collection.id } } }
+      : {}),
+    ...(minPrice != null || maxPrice != null
+      ? { price: { ...(minPrice != null ? { gte: minPrice } : {}), ...(maxPrice != null ? { lte: maxPrice } : {}) } }
+      : {}),
+  };
 
   if (q?.trim()) {
-    match.$text = { $search: q.trim() };
+    const search = q.trim();
+    where.OR = [
+      { title: { contains: search, mode: "insensitive" } },
+      { description: { contains: search, mode: "insensitive" } },
+      { tags: { has: search } },
+    ];
   }
 
-  if (minPrice != null || maxPrice != null) {
-    match.price = {
-      ...(minPrice != null ? { $gte: minPrice } : {}),
-      ...(maxPrice != null ? { $lte: maxPrice } : {}),
-    };
+  const attributeFilters = Object.entries(filters).flatMap(([key, values]) =>
+    (values ?? []).map((value) => ({
+      attributes: { path: [key], equals: value },
+    }))
+  );
+  if (attributeFilters.length) {
+    where.AND = attributeFilters;
   }
 
-  for (const [key, values] of Object.entries(filters)) {
-    if (values?.length) {
-      match[`attributes.${key}`] = { $in: values };
-    }
-  }
-
-  const sortStage = q?.trim()
-    ? { score: { $meta: "textScore" as const }, ...SORT_MAP[sort] }
-    : SORT_MAP[sort] ?? SORT_MAP.newest;
-  const skip = (page - 1) * limit;
-
-  const [products, total, category] = await Promise.all([
-    Product.find(match).sort(sortStage).skip(skip).limit(limit).lean(),
-    Product.countDocuments(match),
-    categorySlug ? Category.findOne({ slug: categorySlug }).lean() : null,
+  const skip = Math.max(page - 1, 0) * limit;
+  const [products, total] = await Promise.all([
+    Product.findMany({ where, orderBy: SORT_MAP[sort] ?? SORT_MAP.newest, skip, take: limit }),
+    Product.count({ where }),
   ]);
 
   return {
@@ -96,38 +102,47 @@ export async function getProducts(query: ProductQuery) {
 
 export async function getFeaturedProducts(limit = 8) {
   await connectToDatabase();
-  return Product.find({ isActive: true, featured: true }).sort({ createdAt: -1 }).limit(limit).lean();
+  return Product.findMany({
+    where: { isActive: true, featured: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
 }
 
 export async function getProductBySlug(slug: string) {
   await connectToDatabase();
-  return Product.findOne({ slug, isActive: true })
-    .populate("category", "name slug")
-    .populate("collections", "title slug")
-    .lean();
+  const product = await Product.findFirst({
+    where: { slug, isActive: true },
+    include: { categoryRef: true, collections: { include: { collection: true } } },
+  });
+  if (!product) return null;
+
+  const { categoryRef, collections, ...rest } = product;
+  return {
+    ...rest,
+    category: categoryRef,
+    collections: collections.map(({ collection: item }) => item),
+  };
 }
 
 export async function getRelatedProducts(product: {
-  _id: Types.ObjectId | string;
-  category: Types.ObjectId | string;
-  relatedProducts?: (Types.ObjectId | string)[];
+  id: string;
+  category: string | { id: string };
+  relatedProducts?: string[];
 }) {
   await connectToDatabase();
 
   if (product.relatedProducts?.length) {
-    const related = await Product.find({
-      _id: { $in: product.relatedProducts },
-      isActive: true,
-    }).lean();
+    const related = await Product.findMany({
+      where: { id: { in: product.relatedProducts }, isActive: true },
+    });
     if (related.length) return related;
   }
 
-  return Product.find({
-    category: product.category,
-    _id: { $ne: product._id },
-    isActive: true,
-  })
-    .sort({ soldCount: -1 })
-    .limit(4)
-    .lean();
+  const categoryId = typeof product.category === "string" ? product.category : product.category.id;
+  return Product.findMany({
+    where: { category: categoryId, id: { not: product.id }, isActive: true },
+    orderBy: { soldCount: "desc" },
+    take: 4,
+  });
 }

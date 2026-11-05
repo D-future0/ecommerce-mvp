@@ -1,7 +1,7 @@
 # Ecommerce MVP — Phase 4: Shipping, Images, Emails
 
 ## Stack
-Next.js 16 (App Router, React 19) · TypeScript · Tailwind CSS · MongoDB/Mongoose · Auth.js (NextAuth, JWT) · Redis (ioredis) · Paystack · Resend · Cloudinary
+Next.js 16 (App Router, React 19) · TypeScript · Tailwind CSS · Neon Postgres (Prisma) · Auth.js (NextAuth, JWT) · Redis (ioredis) · Paystack · Resend · Cloudinary
 
 ## What's built
 
@@ -35,17 +35,27 @@ Models, Auth.js credentials+JWT, `/login` + `/register`, Redis rate limiting, ro
 - Shipping-update email sent when an admin moves an order to `shipped` or `delivered` in `/admin/orders/[id]`.
 - **Fails safe**: if `RESEND_API_KEY` isn't set, email sending no-ops instead of crashing checkout — this actually broke the build the first time I wired it in (the Resend SDK throws at import time on a missing key, not just at send time), so it's now lazily initialized and confirmed working both with and without the key set.
 
-Verified: `npm install`, `tsc --noEmit`, and `next build` all pass clean — 38 routes.
-
 ## Setup
 ```bash
-cp .env.example .env.local   # MongoDB, Redis, Paystack, Resend, Cloudinary, NEXTAUTH_SECRET, optional ADMIN_EMAIL/PASSWORD
-npm install
-npm run seed
-npm run dev
+cp .env.example .env.local   # add your Neon and service credentials
+pnpm install
+pnpm run db:migrate
+pnpm run seed
+pnpm run dev
 ```
 
-New env vars this phase: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (from your Cloudinary dashboard). `RESEND_API_KEY` / `RESEND_FROM_EMAIL` were already in the template from Phase 1 — this phase is what actually uses them. Note: Resend requires the `RESEND_FROM_EMAIL` domain to be verified in your Resend account before it'll send.
+Set `DATABASE_URL` to Neon's pooled connection string (the hostname contains `-pooler`) and `DIRECT_URL` to Neon's direct, unpooled connection string. Prisma uses the pooled URL for app queries and the direct URL for migrations. Configure `NEXTAUTH_SECRET`, Redis, Paystack, Resend, and Cloudinary as needed; `ADMIN_EMAIL` / `ADMIN_PASSWORD` are optional seed settings. Resend requires the `RESEND_FROM_EMAIL` domain to be verified in your Resend account before it'll send.
+
+### Moving existing data from MongoDB
+
+The one-time importer copies users, categories, collections, products, orders, carts, reviews, and banners while preserving MongoDB ObjectId values as string IDs. Before running it, take a MongoDB backup, set `MONGODB_URI` to the source database, and confirm the Neon database is empty. Then run:
+
+```bash
+pnpm run db:migrate
+pnpm run migrate:mongodb
+```
+
+The importer refuses to run against a non-empty Neon database; it does not delete or alter the MongoDB source. Review the copied record counts before switching traffic. `MONGODB_URI` is only needed for this import and is not used by the application.
 
 ## Not built yet
 This closes out everything in the original feature list. What's left is genuinely "launch polish," not missing functionality:

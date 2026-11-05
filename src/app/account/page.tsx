@@ -12,7 +12,7 @@ export default async function AccountPage() {
   if (!session?.user) return null; // middleware redirects to /login before this renders
 
   await connectToDatabase();
-  const user = await User.findById(session.user.id).lean();
+  const user = await User.findUnique({ where: { id: session.user.id } });
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">

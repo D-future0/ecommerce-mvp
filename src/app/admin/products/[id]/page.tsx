@@ -17,16 +17,22 @@ export default async function EditProductPage({ params }: PageProps) {
 
   await connectToDatabase();
   const [productDoc, categoryDocs, collectionDocs] = await Promise.all([
-    Product.findById(id).lean(),
-    Category.find().sort({ name: 1 }).select("name").lean(),
-    Collection.find().sort({ title: 1 }).select("title").lean(),
+    Product.findUnique({
+      where: { id: id },
+      include: { collections: { select: { collectionId: true } } },
+    }),
+    Category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    Collection.findMany({ orderBy: { title: "asc" }, select: { id: true, title: true } }),
   ]);
 
   if (!productDoc) notFound();
 
-  const product = toPlain<ProductFormValues & { category: string }>(productDoc);
-  const categories = toPlain<{ _id: string; name: string }[]>(categoryDocs);
-  const collections = toPlain<{ _id: string; title: string }[]>(collectionDocs);
+  const product = toPlain<ProductFormValues & { category: string }>({
+    ...productDoc,
+    collections: productDoc.collections.map((item) => item.collectionId),
+  });
+  const categories = toPlain<{ id: string; name: string }[]>(categoryDocs);
+  const collections = toPlain<{ id: string; title: string }[]>(collectionDocs);
 
   return (
     <div>

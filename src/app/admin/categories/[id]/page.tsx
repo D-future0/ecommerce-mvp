@@ -14,11 +14,16 @@ export default async function EditCategoryPage({ params }: PageProps) {
   const { id } = await params;
 
   await connectToDatabase();
-  const categoryDoc = await Category.findById(id).lean();
+  const categoryDoc = await Category.findUnique({ where: { id: id } });
   if (!categoryDoc) notFound();
-  const categories = toPlain<{ _id: string; name: string }[]>(await Category.find().sort({ name: 1 }).select("name").lean());
+  const categories = toPlain<{ id: string; name: string }[]>(
+    await Category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } })
+  );
 
-  const category = toPlain<CategoryFormValues>(categoryDoc);
+  const category = toPlain<CategoryFormValues>({
+    ...categoryDoc,
+    filters: toPlain<CategoryFormValues["filters"]>(categoryDoc.filters),
+  });
 
   return (
     <div>

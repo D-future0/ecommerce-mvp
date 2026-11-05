@@ -29,7 +29,7 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectToDatabase();
-  const categories = await Category.find().sort({ name: 1 }).lean();
+  const categories = await Category.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json({ categories });
 }
 
@@ -44,13 +44,18 @@ export async function POST(req: NextRequest) {
   await connectToDatabase();
 
   if (parsed.data.parent) {
-    const parent = await Category.exists({ _id: parsed.data.parent });
+    const parent = await Category.findUnique({
+      where: { id: parsed.data.parent },
+      select: { id: true },
+    });
     if (!parent) return NextResponse.json({ error: "Parent category not found" }, { status: 400 });
   }
 
-  const existing = await Category.findOne({ slug: parsed.data.slug });
+  const existing = await Category.findUnique({ where: { slug: parsed.data.slug } });
   if (existing) return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
 
-  const category = await Category.create({ ...parsed.data, parent: parsed.data.parent || null });
+  const category = await Category.create({
+    data: { ...parsed.data, parent: parsed.data.parent || null },
+  });
   return NextResponse.json({ category }, { status: 201 });
 }

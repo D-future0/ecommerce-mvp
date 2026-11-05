@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
   await connectToDatabase();
 
-  const existing = await User.findOne({ email: email.toLowerCase() });
+  const existing = await User.findUnique({ where: { email: email.toLowerCase() } });
   if (existing) {
     return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
   }
@@ -39,13 +39,15 @@ export async function POST(req: Request) {
   const passwordHash = await bcrypt.hash(password, 12);
 
   const user = await User.create({
-    name,
-    email: email.toLowerCase(),
-    passwordHash,
+    data: {
+      name,
+      email: email.toLowerCase(),
+      passwordHash,
+    },
   });
 
   return NextResponse.json(
-    { id: user._id.toString(), name: user.name, email: user.email },
+    { id: user.id, name: user.name, email: user.email },
     { status: 201 }
   );
 }

@@ -86,29 +86,34 @@ export async function POST(req: NextRequest) {
 
   await connectToDatabase();
 
-  const user = await User.findById(session.user.id).select("billingAddress");
+  const user = await User.findUnique({
+    where: { id: session.user.id },
+    select: { billingAddress: true },
+  });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   if (!isPickup && parsed.data.saveBillingAddress && !user.billingAddress) {
-    user.billingAddress = {
+    await User.update({
+      where: { id: session.user.id },
+      data: { billingAddress: {
       label: "Billing",
       line1: parsed.data.line1!.trim(),
-      line2: parsed.data.line2?.trim() || undefined,
+      ...(parsed.data.line2?.trim() ? { line2: parsed.data.line2.trim() } : {}),
       city: parsed.data.city!.trim(),
       state: parsed.data.state!,
       country: parsed.data.country,
       phone: parsed.data.phone!.trim(),
-    };
-    await user.save();
+      } },
+    });
   }
 
-  const order = await Order.create({
+  const order = await Order.create({ data: {
     user: session.user.id,
     items: cartItems.map((item) => ({
       product: item.productId,
       title: item.title,
       image: item.image ?? "",
-      variant: item.variant,
+      ...(item.variant ? { variant: item.variant } : {}),
       price: item.price,
       quantity: item.quantity,
     })),
@@ -121,9 +126,17 @@ export async function POST(req: NextRequest) {
     deliveryType,
     shippingAddress: isPickup
       ? { line1: "Pickup from store", city: "", state: "", country: "Nigeria", phone: "" }
-      : { ...parsed.data, lga: parsed.data.state === "Lagos" ? parsed.data.lga : undefined },
+      : {
+          line1: parsed.data.line1!.trim(),
+          ...(parsed.data.line2?.trim() ? { line2: parsed.data.line2.trim() } : {}),
+          city: parsed.data.city!.trim(),
+          state: parsed.data.state!,
+          country: parsed.data.country,
+          phone: parsed.data.phone!.trim(),
+          ...(parsed.data.state === "Lagos" && parsed.data.lga ? { lga: parsed.data.lga } : {}),
+        },
     paystackReference: reference,
-  });
+  } });
 
   const origin = req.nextUrl.origin;
   const init = await initializeTransaction({
@@ -134,13 +147,14 @@ export async function POST(req: NextRequest) {
   });
 
   if (!init.status || !init.data) {
-    order.status = "cancelled";
-    await order.save();
+    await Order.update({ where: { id: order.id }, data: { status: "cancelled" } });
     return NextResponse.json({ error: init.message || "Could not start payment" }, { status: 502 });
   }
 
-  order.paystackAuthorizationUrl = init.data.authorization_url;
-  await order.save();
+  await Order.update({
+    where: { id: order.id },
+    data: { paystackAuthorizationUrl: init.data.authorization_url },
+  });
 
   return NextResponse.json({ authorizationUrl: init.data.authorization_url, reference });
 }

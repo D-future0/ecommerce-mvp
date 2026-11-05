@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { User } from "@/models/User";
+import { parseUserAddresses } from "@/lib/user-data";
 
 const addressSchema = z.object({
   label: z.string().min(1).max(50).default("Home"),
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
 
   await connectToDatabase();
 
-  const user = await User.findById(session.user.id);
+  const user = await User.findUnique({ where: { id: session.user.id } });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
@@ -50,15 +51,17 @@ export async function POST(req: Request) {
     isDefault: !!parsed.data.isDefault,
   };
 
-  const existing = user.addresses ?? [];
+  const existing = parseUserAddresses(user.addresses);
   if (address.isDefault) {
     existing.forEach((item) => {
       item.isDefault = false;
     });
   }
 
-  user.addresses = [...existing, address];
-  await user.save();
+  await User.update({
+    where: { id: user.id },
+    data: { addresses: [...existing, address].map((item) => ({ ...item })) },
+  });
 
   return NextResponse.json({ ok: true, address });
 }

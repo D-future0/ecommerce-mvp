@@ -7,7 +7,14 @@ import { formatPrice } from "@/lib/format";
 
 export default async function AdminProductsPage() {
   await connectToDatabase();
-  const products = await Product.find().sort({ createdAt: -1 }).populate("category", "name").lean();
+  const productRows = await Product.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { categoryRef: { select: { name: true } } },
+  });
+  const products = productRows.map(({ categoryRef, ...product }) => ({
+    ...product,
+    category: categoryRef,
+  }));
 
   return (
     <div>
@@ -30,13 +37,13 @@ export default async function AdminProductsPage() {
         </thead>
         <tbody>
           {products.map((p) => (
-            <tr key={p._id.toString()} className="border-b border-line">
+            <tr key={p.id} className="border-b border-line">
               <td className="py-3">
-                <Link href={`/admin/products/${p._id}`} className="text-ink">
+                <Link href={`/admin/products/${p.id}`} className="text-ink">
                   {p.title}
                 </Link>
               </td>
-              <td className="py-3 text-stone">{(p.category as any)?.name ?? "—"}</td>
+              <td className="py-3 text-stone">{p.category?.name ?? "—"}</td>
               <td className="py-3">{formatPrice(p.price, p.currency)}</td>
               <td className={`py-3 ${p.stock === 0 ? "text-red-700" : ""}`}>{p.stock}</td>
               <td className="py-3">

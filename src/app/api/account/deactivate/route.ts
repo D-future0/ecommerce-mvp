@@ -12,7 +12,7 @@ export async function POST() {
 
   await connectToDatabase();
 
-  const user = await User.findById(session.user.id);
+  const user = await User.findUnique({ where: { id: session.user.id } });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
@@ -21,9 +21,10 @@ export async function POST() {
     return NextResponse.json({ ok: true });
   }
 
-  user.isDeactivated = true;
-  user.deactivatedAt = new Date();
-  await user.save();
+  await User.update({
+    where: { id: user.id },
+    data: { isDeactivated: true, deactivatedAt: new Date() },
+  });
 
   return NextResponse.json({ ok: true });
 }

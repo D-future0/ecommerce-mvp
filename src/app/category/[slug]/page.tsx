@@ -9,8 +9,9 @@ import { FilterSidebar } from "@/components/FilterSidebar";
 import { SortSelect } from "@/components/SortSelect";
 import { Pagination } from "@/components/Pagination";
 import { Category } from "@/models/Category";
-import { Product } from "@/models/Product";
-import { connectToDatabase } from "@/lib/db";
+import { connectToDatabase, prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
+import { parseCategoryFilters } from "@/lib/category-data";
 import type { ProductListItem } from "@/types/product";
 
 interface PageProps {
@@ -44,18 +45,22 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
   await connectToDatabase();
   const [childCategories, databaseColors] = await Promise.all([
-    Category.find({ parent: result.category._id }).sort({ name: 1 }).lean(),
-    Product.distinct("attributes.color", { category: result.category._id, isActive: true }),
+    Category.findMany({ where: { parent: result.category.id }, orderBy: { name: "asc" } }),
+    prisma.$queryRaw<Array<{ color: string }>>(Prisma.sql`
+      SELECT DISTINCT attributes->>'color' AS color
+      FROM "Product"
+      WHERE category = ${result.category.id}
+        AND "isActive" = TRUE
+        AND attributes->>'color' IS NOT NULL
+    `),
   ]);
 
-  const category = toPlain<{
-    name: string;
-    description?: string;
-    filters: { key: string; label: string; options: string[] }[];
-  }>(
-    result.category
-  );
-  const colors = databaseColors.filter((color): color is string => typeof color === "string" && color.trim().length > 0).sort();
+  const category = {
+    name: result.category.name,
+    description: result.category.description ?? undefined,
+    filters: parseCategoryFilters(result.category.filters),
+  };
+  const colors = databaseColors.map(({ color }) => color).filter((color) => color.trim().length > 0).sort();
   const hasColorFilter = category.filters.some((filter) => filter.key === "color");
   const filtersWithDatabaseColors = hasColorFilter
     ? category.filters.map((filter) => (filter.key === "color" ? { ...filter, options: colors } : filter))
@@ -104,7 +109,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
           ) : (
             <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 xl:grid-cols-4">
               {products.map((product) => (
-                <ProductCard key={product._id} product={product} />
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           )}

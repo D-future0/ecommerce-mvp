@@ -10,7 +10,7 @@ import { toPlain } from "@/lib/serialize";
 import type { ProductListItem } from "@/types/product";
 
 type HomeCollection = {
-  _id: string;
+  id: string;
   title: string;
   slug: string;
   homeTheme?: "purple" | "rose" | "slate" | "emerald" | "gold";
@@ -20,13 +20,17 @@ type HomeCollection = {
 
 export default async function HomePage() {
   await connectToDatabase();
-  const bannerDocs = await Banner.find({ active: true }).sort({ sortOrder: 1, createdAt: -1 }).lean();
+  const bannerDocs = await Banner.findMany({
+    where: { active: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+  });
   const banners = toPlain<BannerItem[]>(bannerDocs);
 
   const collections = toPlain<HomeCollection[]>(
-    await Collection.find({ showOnHome: true })
-      .sort({ homeOrder: 1, name: 1 })
-      .lean()
+    await Collection.findMany({
+      where: { showOnHome: true },
+      orderBy: [{ homeOrder: "asc" }, { title: "asc" }],
+    })
   );
 
   return (
@@ -51,14 +55,18 @@ export default async function HomePage() {
           {(
             await Promise.all(
               collections.map(async (collection) => {
-                const collectionProducts = await Product.find({ collections: collection._id, isActive: true })
-                  .sort({ createdAt: -1 })
-                  .limit(4)
-                  .lean();
+                const collectionProducts = await Product.findMany({
+                  where: {
+                    collections: { some: { collectionId: collection.id } },
+                    isActive: true,
+                  },
+                  orderBy: { createdAt: "desc" },
+                  take: 4,
+                });
 
                 return (
                   <FeaturedSection
-                    key={String(collection._id)}
+                    key={String(collection.id)}
                     title={collection.title}
                     collectionSlug={collection.slug}
                     products={toPlain<ProductListItem[]>(collectionProducts)}

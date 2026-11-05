@@ -8,6 +8,7 @@ import { connectToDatabase } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
 import { User } from "@/models/User";
 import { CheckoutForm } from "@/components/CheckoutForm";
+import { parseBillingAddress } from "@/lib/user-data";
 
 export default async function CheckoutPage() {
   const session = await getServerSession(authOptions);
@@ -17,7 +18,10 @@ export default async function CheckoutPage() {
   if (items.length === 0) redirect("/cart");
 
   await connectToDatabase();
-  const user = await User.findById(session.user.id).select("name email billingAddress").lean();
+  const user = await User.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, email: true, billingAddress: true },
+  });
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -34,7 +38,7 @@ export default async function CheckoutPage() {
           currency={currency}
           customerName={user?.name ?? session.user.name ?? ""}
           customerEmail={user?.email ?? session.user.email ?? ""}
-          billingAddress={user?.billingAddress ?? null}
+          billingAddress={parseBillingAddress(user?.billingAddress ?? null)}
         />
 
         <div>

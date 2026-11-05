@@ -5,7 +5,9 @@ import { toPlain } from "@/lib/serialize";
 
 export default async function NewCategoryPage() {
   await connectToDatabase();
-  const categories = toPlain<{ _id: string; name: string }[]>(await Category.find().sort({ name: 1 }).select("name").lean());
+  const categories = toPlain<{ id: string; name: string }[]>(
+    await Category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } })
+  );
 
   return (
     <div>

@@ -18,14 +18,17 @@ export async function POST(
   const { productId } = await params;
 
   await connectToDatabase();
-  const user = await User.findById(session.user.id).select("wishlist");
+  const user = await User.findUnique({
+    where: { id: session.user.id },
+    select: { wishlist: true },
+  });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const isWishlisted = user.wishlist.some((id) => id.toString() === productId);
-
-  await User.findByIdAndUpdate(session.user.id,
-    isWishlisted ? { $pull: { wishlist: productId } } : { $addToSet: { wishlist: productId } }
-  );
+  const isWishlisted = user.wishlist.includes(productId);
+  const wishlist = isWishlisted
+    ? user.wishlist.filter((id) => id !== productId)
+    : [...user.wishlist, productId];
+  await User.update({ where: { id: session.user.id }, data: { wishlist } });
 
   return NextResponse.json({ wishlisted: !isWishlisted });
 }

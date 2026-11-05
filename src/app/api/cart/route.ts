@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/db";
+import { connectToDatabase, prisma } from "@/lib/db";
 import { Cart } from "@/models/Cart";
 import { Product } from "@/models/Product";
 import { getCartItems } from "@/lib/cart";
@@ -42,22 +42,36 @@ export async function POST(req: NextRequest) {
   const { productId, variant, quantity } = parsed.data;
 
   await connectToDatabase();
-  const product = await Product.findById(productId).lean();
+  const product = await Product.findUnique({ where: { id: productId } });
   if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
 
-  const cart = await Cart.findOneAndUpdate(
-    { user: user.id, "items.product": productId, "items.variant": variant ?? null },
-    { $inc: { "items.$.quantity": quantity } },
-    { new: true }
-  );
-
-  if (!cart) {
-    await Cart.findOneAndUpdate(
-      { user: user.id },
-      { $push: { items: { product: productId, variant: variant ?? null, quantity } } },
-      { upsert: true }
-    );
-  }
+  await prisma.$transaction(async (tx) => {
+    const cart = await tx.cart.upsert({
+      where: { user: user.id },
+      create: { user: user.id },
+      update: { updatedAt: new Date() },
+    });
+    const variantKey = variant ?? "";
+    const where = {
+      cartId_product_variant: {
+        cartId: cart.id,
+        product: productId,
+        variant: variantKey,
+      },
+    };
+    const position = await tx.cartItem.count({ where: { cartId: cart.id } });
+    await tx.cartItem.upsert({
+      where,
+      create: {
+        cartId: cart.id,
+        product: productId,
+        variant: variantKey,
+        quantity,
+        position,
+      },
+      update: { quantity: { increment: quantity } },
+    });
+  });
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }
@@ -79,10 +93,13 @@ export async function PATCH(req: NextRequest) {
   const { productId, variant, quantity } = parsed.data;
 
   await connectToDatabase();
-  await Cart.findOneAndUpdate(
-    { user: user.id, "items.product": productId, "items.variant": variant ?? null },
-    { $set: { "items.$.quantity": quantity } }
-  );
+  const cart = await Cart.findUnique({ where: { user: user.id } });
+  if (cart) {
+    await prisma.cartItem.updateMany({
+      where: { cartId: cart.id, product: productId, variant: variant ?? "" },
+      data: { quantity },
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }
@@ -103,10 +120,12 @@ export async function DELETE(req: NextRequest) {
   const { productId, variant } = parsed.data;
 
   await connectToDatabase();
-  await Cart.findOneAndUpdate(
-    { user: user.id },
-    { $pull: { items: { product: productId, variant: variant ?? null } } }
-  );
+  const cart = await Cart.findUnique({ where: { user: user.id } });
+  if (cart) {
+    await prisma.cartItem.deleteMany({
+      where: { cartId: cart.id, product: productId, variant: variant ?? "" },
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

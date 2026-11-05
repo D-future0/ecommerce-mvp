@@ -5,13 +5,14 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { User } from "@/models/User";
 import { AccountSettingsForm } from "@/components/AccountSettingsForm";
+import { parseUserAddresses } from "@/lib/user-data";
 
 export default async function AccountSettingsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return null;
 
   await connectToDatabase();
-  const user = await User.findById(session.user.id).lean();
+  const user = await User.findUnique({ where: { id: session.user.id } });
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
@@ -26,7 +27,7 @@ export default async function AccountSettingsPage() {
           email: user?.email ?? "",
           phone: user?.phone ?? "",
           mobile: user?.mobile ?? "",
-          addresses: user?.addresses ?? [],
+          addresses: user ? parseUserAddresses(user.addresses) : [],
           isDeactivated: !!user?.isDeactivated,
         }}
       />

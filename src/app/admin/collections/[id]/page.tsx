@@ -8,7 +8,7 @@ import { CollectionForm, CollectionFormValues } from "@/components/admin/Collect
 
 export default async function EditCollectionPage({ params }: { params: Promise<{ id: string }> }) {
   await connectToDatabase();
-  const collection = await Collection.findById((await params).id).lean();
+  const collection = await Collection.findUnique({ where: { id: (await params).id } });
   if (!collection) notFound();
   return <div><h2 className="text-sm text-ink">Edit collection</h2><div className="mt-6"><CollectionForm initial={toPlain<CollectionFormValues>(collection)} /></div></div>;
 }

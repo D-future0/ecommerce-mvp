@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { User } from "@/models/User";
+import { Product } from "@/models/Product";
 import { toPlain } from "@/lib/serialize";
 import { ProductCard } from "@/components/ProductCard";
 import type { ProductListItem } from "@/types/product";
@@ -14,8 +15,14 @@ export default async function WishlistPage() {
   if (!session?.user) return null; // middleware redirects to /login before this renders
 
   await connectToDatabase();
-  const user = await User.findById(session.user.id).populate("wishlist").lean();
-  const products = toPlain<ProductListItem[]>(user?.wishlist ?? []);
+  const user = await User.findUnique({
+    where: { id: session.user.id },
+    select: { wishlist: true },
+  });
+  const wishlist = user?.wishlist ?? [];
+  const products = toPlain<ProductListItem[]>(
+    wishlist.length ? await Product.findMany({ where: { id: { in: wishlist } } }) : []
+  );
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -31,7 +38,7 @@ export default async function WishlistPage() {
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => (
-            <ProductCard key={product._id} product={product} />
+            <ProductCard key={product.id} product={product} />
           ))}
         </div>
       )}

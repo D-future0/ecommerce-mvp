@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export interface BannerItem {
-  _id: string;
+  id: string;
   title: string;
   subtitle?: string;
   image: string;
@@ -35,7 +35,7 @@ export function BannerCarousel({ banners }: { banners: BannerItem[] }) {
         <div className="absolute bottom-6 right-6 flex gap-2" aria-label="Banner slides">
           {banners.map((item, itemIndex) => (
             <button
-              key={item._id}
+              key={item.id}
               type="button"
               aria-label={`Show banner ${itemIndex + 1}`}
               aria-current={itemIndex === index}

@@ -1,5 +1,5 @@
 export interface ProductListItem {
-  _id: string;
+  id: string;
   title: string;
   slug: string;
   price: number;

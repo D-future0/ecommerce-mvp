@@ -8,7 +8,7 @@ interface AccountUser {
   phone?: string;
   mobile?: string;
   addresses?: Array<{
-    _id?: string;
+    id?: string;
     label?: string;
     line1?: string;
     line2?: string;

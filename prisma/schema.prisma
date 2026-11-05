@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String    @id @default(cuid()) @map("_id")
+  name           String
+  email          String    @unique
+  passwordHash   String
+  phone          String    @default("")
+  mobile         String    @default("")
+  role           String    @default("customer")
+  wishlist       String[]  @default([])
+  recentlyViewed Json      @default("[]")
+  addresses      Json      @default("[]")
+  billingAddress Json?
+  isDeactivated  Boolean   @default(false)
+  deactivatedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  orders         Order[]
+  cart           Cart?
+  reviews        Review[]
+
+  @@index([role])
+}
+
+model Category {
+  id              String     @id @default(cuid()) @map("_id")
+  name            String
+  slug            String     @unique
+  description     String?
+  image           String?
+  parent          String?
+  featured        Boolean    @default(false)
+  filters         Json       @default("[]")
+  showOnHome      Boolean    @default(false)
+  homeOrder       Int        @default(100)
+  homeTheme       String     @default("purple")
+  homeDisplayMode String     @default("grid")
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  parentCategory  Category?  @relation("CategoryTree", fields: [parent], references: [id], onDelete: SetNull)
+  childCategories Category[] @relation("CategoryTree")
+  products        Product[]
+}
+
+model Collection {
+  id              String              @id @default(cuid()) @map("_id")
+  title           String
+  slug            String              @unique
+  description     String?
+  image           String?
+  seoTitle        String?
+  seoDescription  String?
+  showOnHome      Boolean             @default(false)
+  homeOrder       Int                 @default(100)
+  homeTheme       String              @default("purple")
+  homeDisplayMode String              @default("grid")
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  products        ProductCollection[]
+}
+
+model Product {
+  id              String              @id @default(cuid()) @map("_id")
+  title           String
+  slug            String              @unique
+  description     String
+  seoTitle        String?
+  seoDescription  String?
+  price           Int
+  compareAtPrice  Int?
+  currency        String              @default("NGN")
+  images          String[]            @default([])
+  category        String
+  collections     ProductCollection[]
+  tags            String[]            @default([])
+  attributes      Json                @default("{}")
+  variants        Json                @default("[]")
+  stock           Int                 @default(0)
+  sku             String?
+  featured        Boolean             @default(false)
+  isActive        Boolean             @default(true)
+  relatedProducts String[]            @default([])
+  ratingAverage   Float               @default(0)
+  ratingCount     Int                 @default(0)
+  soldCount       Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  categoryRef     Category            @relation(fields: [category], references: [id], onDelete: Restrict)
+  reviews         Review[]
+
+  @@index([category, isActive, price])
+  @@index([featured, isActive])
+  @@index([isActive, createdAt])
+  @@index([tags], type: Gin)
+}
+
+model ProductCollection {
+  productId    String
+  collectionId String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, collectionId])
+  @@index([collectionId])
+}
+
+model Order {
+  id                       String    @id @default(cuid()) @map("_id")
+  user                     String
+  items                    Json
+  subtotal                 Int
+  shippingFee              Int       @default(0)
+  total                    Int
+  currency                 String    @default("NGN")
+  deliveryMethod           String?
+  deliveryType             String?
+  status                   String    @default("pending")
+  shippingAddress          Json
+  paystackReference        String    @unique
+  paystackAuthorizationUrl String?
+  paidAt                   DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  userRef                  User      @relation(fields: [user], references: [id], onDelete: Restrict)
+
+  @@index([user, createdAt])
+  @@index([status, createdAt])
+}
+
+model Cart {
+  id        String     @id @default(cuid()) @map("_id")
+  user      String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  userRef   User       @relation(fields: [user], references: [id], onDelete: Cascade)
+  items     CartItem[]
+}
+
+model CartItem {
+  cartId   String
+  product  String
+  variant  String @default("")
+  quantity Int
+  position Int    @default(0)
+  cart     Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  @@id([cartId, product, variant])
+  @@index([cartId, position])
+  @@index([product])
+}
+
+model Review {
+  id               String   @id @default(cuid()) @map("_id")
+  product          String
+  user             String
+  rating           Int
+  title            String?
+  body             String
+  verifiedPurchase Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  productRef       Product  @relation(fields: [product], references: [id], onDelete: Cascade)
+  userRef          User     @relation(fields: [user], references: [id], onDelete: Cascade)
+
+  @@unique([product, user])
+  @@index([product, createdAt])
+}
+
+model Banner {
+  id        String   @id @default(cuid()) @map("_id")
+  title     String
+  subtitle  String?
+  image     String
+  href      String?
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}

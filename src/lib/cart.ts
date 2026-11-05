@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/db";
 import { Cart } from "@/models/Cart";
 import { Product } from "@/models/Product";
+import type { IProductVariant } from "@/models/Product";
 
 export interface CartItemView {
   productId: string;
@@ -14,31 +15,46 @@ export interface CartItemView {
   stock: number;
 }
 
+function parseVariants(value: unknown): IProductVariant[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (variant): variant is IProductVariant =>
+      typeof variant === "object" &&
+      variant !== null &&
+      typeof variant.name === "string" &&
+      typeof variant.value === "string" &&
+      typeof variant.stock === "number" &&
+      typeof variant.sku === "string"
+  );
+}
+
 export async function getCartItems(userId: string): Promise<CartItemView[]> {
   await connectToDatabase();
-  const cart = await Cart.findOne({ user: userId }).lean();
-  if (!cart || !cart.items.length) return [];
+  const cart = await Cart.findUnique({
+    where: { user: userId },
+    include: { items: { orderBy: { position: "asc" } } },
+  });
+  if (!cart?.items.length) return [];
 
-  const productIds = cart.items.map((i) => i.product);
-  const products = await Product.find({ _id: { $in: productIds } }).lean();
-  const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+  const products = await Product.findMany({ where: { id: { in: cart.items.map((item) => item.product) } } });
+  const productMap = new Map(products.map((product) => [product.id, product]));
 
   return cart.items
     .map((item): CartItemView | null => {
-      const product = productMap.get(item.product.toString());
+      const product = productMap.get(item.product);
       if (!product) return null;
-      const variant = product.variants.find((v) => v.value === item.variant);
+      const variant = parseVariants(product.variants).find((entry) => entry.value === item.variant);
       return {
-        productId: product._id.toString(),
+        productId: product.id,
         slug: product.slug,
         title: product.title,
         image: product.images[0] ?? null,
         price: product.price + (variant?.priceDelta ?? 0),
         currency: product.currency,
-        variant: item.variant ?? undefined,
+        variant: item.variant || undefined,
         quantity: item.quantity,
         stock: variant?.stock ?? product.stock,
       };
     })
-    .filter((i): i is CartItemView => i !== null);
+    .filter((item): item is CartItemView => item !== null);
 }

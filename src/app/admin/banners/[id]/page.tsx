@@ -9,7 +9,7 @@ import { BannerForm, BannerFormValues } from "@/components/admin/BannerForm";
 export default async function EditBannerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await connectToDatabase();
-  const bannerDoc = await Banner.findById(id).lean();
+  const bannerDoc = await Banner.findUnique({ where: { id: id } });
   if (!bannerDoc) notFound();
 
   return (

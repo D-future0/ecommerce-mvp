@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export interface CollectionFormValues {
-  _id?: string;
+  id?: string;
   title: string;
   slug: string;
   description?: string;
@@ -19,7 +19,7 @@ function slugify(value: string) {
 
 export function CollectionForm({ initial }: { initial?: CollectionFormValues }) {
   const router = useRouter();
-  const isEdit = !!initial?._id;
+  const isEdit = !!initial?.id;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(isEdit);
@@ -35,7 +35,7 @@ export function CollectionForm({ initial }: { initial?: CollectionFormValues }) 
     event.preventDefault();
     setLoading(true);
     setError("");
-    const res = await fetch(isEdit ? `/api/admin/collections/${initial!._id}` : "/api/admin/collections", {
+    const res = await fetch(isEdit ? `/api/admin/collections/${initial!.id}` : "/api/admin/collections", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, slug, description: description || undefined, image: image || undefined, seoTitle: seoTitle || undefined, seoDescription: seoDescription || undefined }),
@@ -51,8 +51,8 @@ export function CollectionForm({ initial }: { initial?: CollectionFormValues }) 
   }
 
   async function onDelete() {
-    if (!initial?._id || !confirm(`Delete "${initial.title}"? Products will remain but lose this collection.`)) return;
-    await fetch(`/api/admin/collections/${initial._id}`, { method: "DELETE" });
+    if (!initial?.id || !confirm(`Delete "${initial.title}"? Products will remain but lose this collection.`)) return;
+    await fetch(`/api/admin/collections/${initial.id}`, { method: "DELETE" });
     router.push("/admin/collections");
     router.refresh();
   }

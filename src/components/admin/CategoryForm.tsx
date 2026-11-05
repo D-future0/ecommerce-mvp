@@ -10,7 +10,7 @@ interface FilterRow {
 }
 
 export interface CategoryFormValues {
-  _id?: string;
+  id?: string;
   name: string;
   slug: string;
   description?: string;
@@ -27,9 +27,9 @@ function slugify(input: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-export function CategoryForm({ initial, categories = [] }: { initial?: CategoryFormValues; categories?: { _id: string; name: string }[] }) {
+export function CategoryForm({ initial, categories = [] }: { initial?: CategoryFormValues; categories?: { id: string; name: string }[] }) {
   const router = useRouter();
-  const isEdit = !!initial?._id;
+  const isEdit = !!initial?.id;
 
   const [name, setName] = useState(initial?.name ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
@@ -90,7 +90,7 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
         })),
     };
 
-    const res = await fetch(isEdit ? `/api/admin/categories/${initial!._id}` : "/api/admin/categories", {
+    const res = await fetch(isEdit ? `/api/admin/categories/${initial!.id}` : "/api/admin/categories", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -108,10 +108,10 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
   }
 
   async function onDelete() {
-    if (!initial?._id) return;
+    if (!initial?.id) return;
     if (!confirm(`Delete "${initial.name}"?`)) return;
 
-    const res = await fetch(`/api/admin/categories/${initial._id}`, {
+    const res = await fetch(`/api/admin/categories/${initial.id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -150,8 +150,8 @@ export function CategoryForm({ initial, categories = [] }: { initial?: CategoryF
         <label className="text-xs text-stone">Parent category (optional)</label>
         <select value={parent} onChange={(e) => setParent(e.target.value)} className={`mt-1 ${inputClass}`}>
           <option value="">Top-level category</option>
-          {categories.filter((category) => category._id !== initial?._id).map((category) => (
-            <option key={category._id} value={category._id}>{category.name}</option>
+          {categories.filter((category) => category.id !== initial?.id).map((category) => (
+            <option key={category.id} value={category.id}>{category.name}</option>
           ))}
         </select>
       </div>

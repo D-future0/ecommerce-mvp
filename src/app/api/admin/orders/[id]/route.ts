@@ -16,7 +16,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   await connectToDatabase();
-  const order = await Order.findById(id).populate("user", "name email").lean();
+  const row = await Order.findUnique({
+    where: { id: id },
+    include: { userRef: { select: { name: true, email: true } } },
+  });
+  const order = row ? { ...row, user: row.userRef } : null;
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ order });
 }
@@ -31,11 +35,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   await connectToDatabase();
-  const order = await Order.findByIdAndUpdate(id, { status: parsed.data.status }, { new: true });
+  const updated = await Order.updateMany({
+    where: { id: id },
+    data: { status: parsed.data.status },
+  });
+  if (!updated.count) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const order = await Order.findUnique({ where: { id: id } });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (parsed.data.status === "shipped" || parsed.data.status === "delivered") {
-    const user = await User.findById(order.user).select("name email").lean();
+    const user = await User.findUnique({
+      where: { id: order.user },
+      select: { name: true, email: true },
+    });
     if (user?.email) {
       sendShippingUpdateEmail({
         to: user.email,

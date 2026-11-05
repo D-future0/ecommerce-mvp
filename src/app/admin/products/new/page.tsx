@@ -9,11 +9,11 @@ import { ProductForm } from "@/components/admin/ProductForm";
 export default async function NewProductPage() {
   await connectToDatabase();
   const [categoryDocs, collectionDocs] = await Promise.all([
-    Category.find().sort({ name: 1 }).select("name").lean(),
-    Collection.find().sort({ title: 1 }).select("title").lean(),
+    Category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    Collection.findMany({ orderBy: { title: "asc" }, select: { id: true, title: true } }),
   ]);
-  const categories = toPlain<{ _id: string; name: string }[]>(categoryDocs);
-  const collections = toPlain<{ _id: string; title: string }[]>(collectionDocs);
+  const categories = toPlain<{ id: string; name: string }[]>(categoryDocs);
+  const collections = toPlain<{ id: string; title: string }[]>(collectionDocs);
 
   return (
     <div>

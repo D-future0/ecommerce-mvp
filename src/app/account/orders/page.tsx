@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { Order } from "@/models/Order";
 import { formatPrice } from "@/lib/format";
+import { parseOrderAddress, parseOrderItems } from "@/lib/order-data";
 
 const statusStyles: Record<string, string> = {
   pending: "bg-stone-100 text-stone-700",
@@ -22,7 +23,15 @@ export default async function OrdersPage() {
   if (!session?.user) return null;
 
   await connectToDatabase();
-  const orders = await Order.find({ user: session.user.id }).sort({ createdAt: -1 }).lean();
+  const rows = await Order.findMany({
+    where: { user: session.user.id },
+    orderBy: { createdAt: "desc" },
+  });
+  const orders = rows.map((order) => ({
+    ...order,
+    items: parseOrderItems(order.items),
+    shippingAddress: parseOrderAddress(order.shippingAddress),
+  }));
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
@@ -46,10 +55,10 @@ export default async function OrdersPage() {
       ) : (
         <div className="space-y-4">
           {orders.map((order) => (
-            <article key={String(order._id)} className="rounded border border-line p-5">
+            <article key={order.id} className="rounded border border-line p-5">
               <div className="flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-stone">Order #{String(order.paystackReference).slice(-8)}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-stone">Order #{order.paystackReference.slice(-8)}</p>
                   <p className="mt-2 text-sm text-stone">
                     {new Date(order.createdAt).toLocaleDateString("en-NG", {
                       day: "2-digit",

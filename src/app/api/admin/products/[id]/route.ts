@@ -39,7 +39,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   await connectToDatabase();
-  const product = await Product.findById(id).lean();
+  const productRow = await Product.findUnique({
+    where: { id: id },
+    include: { collections: { select: { collectionId: true } } },
+  });
+  const product = productRow
+    ? { ...productRow, collections: productRow.collections.map((item) => item.collectionId) }
+    : null;
   if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ product });
 }
@@ -55,18 +61,48 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   await connectToDatabase();
 
-  const validCollections = await Collection.countDocuments({ _id: { $in: parsed.data.collections } });
+  const validCollections = await Collection.count({
+    where: { id: { in: parsed.data.collections } },
+  });
   if (validCollections !== parsed.data.collections.length) {
     return NextResponse.json({ error: "One or more collections were not found" }, { status: 400 });
   }
 
-  const conflict = await Product.findOne({ slug: parsed.data.slug, _id: { $ne: id } });
+  const conflict = await Product.findFirst({
+    where: { slug: parsed.data.slug, id: { not: id } },
+  });
   if (conflict) return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
 
-  const product = await Product.findByIdAndUpdate(id, parsed.data, { new: true });
-  if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const { collections, ...data } = parsed.data;
+  const existingProduct = await Product.findUnique({
+    where: { id: id },
+    select: { id: true },
+  });
+  if (!existingProduct) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const product = await Product.update({
+    where: { id: id },
+    data: {
+      ...data,
+      collections: {
+        deleteMany: {},
+        create: collections.map((collectionId) => ({
+          collection: { connect: { id: collectionId } },
+        })),
+      },
+    },
+  });
+  const productWithCollections = await Product.findUnique({
+    where: { id: id },
+    include: { collections: { select: { collectionId: true } } },
+  });
+  const responseProduct = productWithCollections
+    ? {
+        ...productWithCollections,
+        collections: productWithCollections.collections.map((item) => item.collectionId),
+      }
+    : product;
 
-  return NextResponse.json({ product });
+  return NextResponse.json({ product: responseProduct });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -75,6 +111,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   await connectToDatabase();
-  await Product.findByIdAndDelete(id);
+  await Product.deleteMany({ where: { id: id } });
   return NextResponse.json({ ok: true });
 }

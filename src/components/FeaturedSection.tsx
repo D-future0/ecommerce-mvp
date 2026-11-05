@@ -44,7 +44,7 @@ export async function FeaturedSection({ title = "Featured category", collectionS
         {displayMode === "carousel" ? (
           <div className="mt-8 flex gap-4 overflow-x-auto pb-2">
             {list.map((product) => (
-              <div key={product._id} className="min-w-[260px] flex-1 max-w-[280px]">
+              <div key={product.id} className="min-w-[260px] flex-1 max-w-[280px]">
                 <ProductCard product={product} />
               </div>
             ))}
@@ -52,7 +52,7 @@ export async function FeaturedSection({ title = "Featured category", collectionS
         ) : (
           <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4">
             {list.map((product) => (
-              <ProductCard key={product._id} product={product} />
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}

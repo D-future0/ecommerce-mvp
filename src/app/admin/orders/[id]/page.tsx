@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/lib/db";
 import { Order } from "@/models/Order";
 import { formatPrice } from "@/lib/format";
 import { OrderStatusSelect } from "@/components/admin/OrderStatusSelect";
+import { parseOrderAddress, parseOrderItems } from "@/lib/order-data";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -14,10 +15,18 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
   const { id } = await params;
 
   await connectToDatabase();
-  const order = await Order.findById(id).populate("user", "name email").lean();
-  if (!order) notFound();
+  const row = await Order.findUnique({
+    where: { id: id },
+    include: { userRef: { select: { name: true, email: true } } },
+  });
+  if (!row) notFound();
+  const order = {
+    ...row,
+    shippingAddress: parseOrderAddress(row.shippingAddress),
+    items: parseOrderItems(row.items),
+  };
 
-  const user = order.user as unknown as { name: string; email: string } | null;
+  const user = order.userRef;
   const isPickup = order.deliveryMethod === "store_pickup" || order.deliveryType === "store_pickup";
   const deliveryType = order.deliveryType ?? (isPickup ? "store_pickup" : order.shippingAddress.state === "Lagos" ? "door_to_door" : "terminal_pickup");
 
@@ -28,7 +37,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
           <h2 className="text-sm text-ink">{order.paystackReference}</h2>
           <p className="mt-1 text-xs text-stone">{new Date(order.createdAt).toLocaleString()}</p>
         </div>
-        <OrderStatusSelect orderId={order._id.toString()} status={order.status} />
+        <OrderStatusSelect orderId={order.id} status={order.status} />
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-8 text-sm">

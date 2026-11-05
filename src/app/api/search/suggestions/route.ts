@@ -15,16 +15,26 @@ export async function GET(req: NextRequest) {
   if (!success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   await connectToDatabase();
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(escaped, "i");
-
   const [products, categories] = await Promise.all([
-    Product.find({ isActive: true, $or: [{ title: pattern }, { tags: pattern }, { description: pattern }] })
-      .select("title slug price currency images")
-      .sort({ soldCount: -1, title: 1 })
-      .limit(6)
-      .lean(),
-    Category.find({ name: pattern }).select("name slug").sort({ name: 1 }).limit(4).lean(),
+    Product.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { title: { contains: query, mode: "insensitive" } },
+          { description: { contains: query, mode: "insensitive" } },
+          { tags: { has: query } },
+        ],
+      },
+      select: { title: true, slug: true, price: true, currency: true, images: true },
+      orderBy: [{ soldCount: "desc" }, { title: "asc" }],
+      take: 6,
+    }),
+    Category.findMany({
+      where: { name: { contains: query, mode: "insensitive" } },
+      select: { name: true, slug: true },
+      orderBy: { name: "asc" },
+      take: 4,
+    }),
   ]);
 
   return NextResponse.json({ products, categories });

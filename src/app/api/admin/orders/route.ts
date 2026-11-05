@@ -10,11 +10,13 @@ export async function GET(req: NextRequest) {
   const status = req.nextUrl.searchParams.get("status");
 
   await connectToDatabase();
-  const orders = await Order.find(status ? { status } : {})
-    .sort({ createdAt: -1 })
-    .limit(200)
-    .populate("user", "name email")
-    .lean();
+  const rows = await Order.findMany({
+    where: status ? { status } : undefined,
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    include: { userRef: { select: { name: true, email: true } } },
+  });
+  const orders = rows.map(({ userRef, ...order }) => ({ ...order, user: userRef }));
 
   return NextResponse.json({ orders });
 }

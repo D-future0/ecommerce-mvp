@@ -3,7 +3,6 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/require-admin";
 import { connectToDatabase } from "@/lib/db";
 import { Collection } from "@/models/Collection";
-import { Product } from "@/models/Product";
 
 const collectionSchema = z.object({
   title: z.string().min(2).max(100),
@@ -18,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectToDatabase();
-  const collection = await Collection.findById((await params).id).lean();
+  const collection = await Collection.findUnique({ where: { id: (await params).id } });
   if (!collection) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ collection });
 }
@@ -30,11 +29,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const id = (await params).id;
   await connectToDatabase();
-  if (await Collection.exists({ slug: parsed.data.slug, _id: { $ne: id } })) {
+  if (await Collection.findFirst({ where: { slug: parsed.data.slug, id: { not: id } } })) {
     return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
   }
-  const collection = await Collection.findByIdAndUpdate(id, parsed.data, { new: true }).lean();
-  if (!collection) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const updated = await Collection.updateMany({ where: { id: id }, data: parsed.data });
+  if (!updated.count) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const collection = await Collection.findUnique({ where: { id: id } });
   return NextResponse.json({ collection });
 }
 
@@ -43,8 +43,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const id = (await params).id;
   await connectToDatabase();
-  await Product.updateMany({ collections: id }, { $pull: { collections: id } });
-  const collection = await Collection.findByIdAndDelete(id);
-  if (!collection) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const collection = await Collection.deleteMany({ where: { id: id } });
+  if (!collection.count) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

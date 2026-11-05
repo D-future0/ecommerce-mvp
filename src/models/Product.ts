@@ -1,88 +1,14 @@
-import { Schema, model, models, Types, Model } from "mongoose";
+import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 export interface IProductVariant {
-  name: string; // e.g. "Size"
-  value: string; // e.g. "M"
+  name: string;
+  value: string;
   priceDelta?: number;
   stock: number;
   sku: string;
 }
 
-export interface IProduct {
-  _id: Types.ObjectId;
-  title: string;
-  slug: string;
-  description: string;
-  seoTitle?: string;
-  seoDescription?: string;
-  price: number; // base price, in kobo/cents (smallest currency unit)
-  compareAtPrice?: number;
-  currency: string;
-  images: string[];
-  category: Types.ObjectId;
-  collections: Types.ObjectId[];
-  tags: string[];
-  attributes: Record<string, string>; // dynamic filterable attrs, e.g. { color: "black", material: "leather" }
-  variants: IProductVariant[];
-  stock: number; // total stock if no variants
-  sku?: string;
-  featured: boolean;
-  isActive: boolean;
-  relatedProducts: Types.ObjectId[];
-  ratingAverage: number;
-  ratingCount: number;
-  soldCount: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+export type IProduct = Prisma.ProductGetPayload<{}>;
 
-const VariantSchema = new Schema<IProductVariant>(
-  {
-    name: { type: String, required: true },
-    value: { type: String, required: true },
-    priceDelta: { type: Number, default: 0 },
-    stock: { type: Number, default: 0 },
-    sku: { type: String, required: true },
-  },
-  { _id: false }
-);
-
-const ProductSchema = new Schema<IProduct>(
-  {
-    title: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, unique: true, lowercase: true },
-    description: { type: String, required: true },
-    seoTitle: { type: String, trim: true, maxlength: 70 },
-    seoDescription: { type: String, trim: true, maxlength: 160 },
-    price: { type: Number, required: true, min: 0 },
-    compareAtPrice: { type: Number },
-    currency: { type: String, default: "NGN" },
-    images: [{ type: String }],
-    category: { type: Schema.Types.ObjectId, ref: "Category", required: true, index: true },
-      collections: [{ type: Schema.Types.ObjectId, ref: "Collection", index: true }],
-    tags: [{ type: String, index: true }],
-    attributes: { type: Schema.Types.Mixed, default: {} },
-    variants: [VariantSchema],
-    stock: { type: Number, default: 0 },
-    sku: String,
-    featured: { type: Boolean, default: false, index: true },
-    isActive: { type: Boolean, default: true, index: true },
-    relatedProducts: [{ type: Schema.Types.ObjectId, ref: "Product" }],
-    ratingAverage: { type: Number, default: 0 },
-    ratingCount: { type: Number, default: 0 },
-    soldCount: { type: Number, default: 0 },
-  },
-  { timestamps: true }
-);
-
-// Titles and tags are stronger purchase signals than long descriptions.
-ProductSchema.index(
-  { title: "text", description: "text", tags: "text" },
-  { weights: { title: 10, tags: 5, description: 1 }, name: "title_text_description_text_tags_text" }
-);
-// Common filter/sort compound indexes
-ProductSchema.index({ category: 1, isActive: 1, price: 1 });
-ProductSchema.index({ featured: 1, isActive: 1 });
-
-export const Product: Model<IProduct> =
-  models.Product || model<IProduct>("Product", ProductSchema);
+export const Product = prisma.product;

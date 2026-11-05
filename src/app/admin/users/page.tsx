@@ -5,7 +5,10 @@ import { User } from "@/models/User";
 
 export default async function AdminUsersPage() {
   await connectToDatabase();
-  const users = await User.find({}).select("name email role createdAt isDeactivated").sort({ createdAt: -1 }).lean();
+  const users = await User.findMany({
+    select: { id: true, name: true, email: true, role: true, createdAt: true, isDeactivated: true },
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
     <div>
@@ -28,7 +31,7 @@ export default async function AdminUsersPage() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={String(user._id)} className="border-b border-line last:border-b-0">
+                <tr key={user.id} className="border-b border-line last:border-b-0">
                   <td className="px-4 py-3 text-ink">{user.name || "Unnamed user"}</td>
                   <td className="px-4 py-3 text-stone">{user.email}</td>
                   <td className="px-4 py-3 text-stone">{user.role}</td>

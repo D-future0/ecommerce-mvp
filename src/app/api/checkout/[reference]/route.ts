@@ -16,7 +16,9 @@ export async function GET(
   const { reference } = await params;
 
   await connectToDatabase();
-  let order = await Order.findOne({ paystackReference: reference, user: session.user.id }).lean();
+  let order = await Order.findFirst({
+    where: { paystackReference: reference, user: session.user.id },
+  });
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
   // If the webhook hasn't landed yet, actively verify with Paystack rather
@@ -25,10 +27,13 @@ export async function GET(
     const verification = await verifyTransaction(reference);
     if (verification.data?.status === "success") {
       await markOrderPaid(reference);
-      order = await Order.findOne({ paystackReference: reference }).lean();
+      order = await Order.findUnique({ where: { paystackReference: reference } });
     } else if (verification.data?.status === "failed" || verification.data?.status === "abandoned") {
-      await Order.updateOne({ paystackReference: reference }, { status: "cancelled" });
-      order = await Order.findOne({ paystackReference: reference }).lean();
+      await Order.updateMany({
+        where: { paystackReference: reference, status: "pending" },
+        data: { status: "cancelled" },
+      });
+      order = await Order.findUnique({ where: { paystackReference: reference } });
     }
   }
 

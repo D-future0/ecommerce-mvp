@@ -1,34 +1,12 @@
-import { Schema, model, models, Types, Model } from "mongoose";
+import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 export interface ICartItem {
-  product: Types.ObjectId;
-  variant?: string;
+  product: string;
+  variant?: string | null;
   quantity: number;
 }
 
-export interface ICart {
-  _id: Types.ObjectId;
-  user: Types.ObjectId;
-  items: ICartItem[];
-  createdAt: Date;
-  updatedAt: Date;
-}
+export type ICart = Prisma.CartGetPayload<{}>;
 
-const CartItemSchema = new Schema<ICartItem>(
-  {
-    product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
-    variant: { type: String, default: null },
-    quantity: { type: Number, required: true, min: 1, default: 1 },
-  },
-  { _id: false }
-);
-
-const CartSchema = new Schema<ICart>(
-  {
-    user: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
-    items: [CartItemSchema],
-  },
-  { timestamps: true }
-);
-
-export const Cart: Model<ICart> = models.Cart || model<ICart>("Cart", CartSchema);
+export const Cart = prisma.cart;

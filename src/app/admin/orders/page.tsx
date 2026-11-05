@@ -17,7 +17,12 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default async function AdminOrdersPage() {
   await connectToDatabase();
-  const orders = await Order.find().sort({ createdAt: -1 }).limit(200).populate("user", "name email").lean();
+  const rows = await Order.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    include: { userRef: { select: { name: true, email: true } } },
+  });
+  const orders = rows.map(({ userRef, ...order }) => ({ ...order, user: userRef }));
 
   return (
     <div>
@@ -35,9 +40,9 @@ export default async function AdminOrdersPage() {
         </thead>
         <tbody>
           {orders.map((o) => (
-            <tr key={o._id.toString()} className="border-b border-line">
+            <tr key={o.id} className="border-b border-line">
               <td className="py-3">
-                <Link href={`/admin/orders/${o._id}`} className="text-ink">
+                <Link href={`/admin/orders/${o.id}`} className="text-ink">
                   {o.paystackReference}
                 </Link>
               </td>

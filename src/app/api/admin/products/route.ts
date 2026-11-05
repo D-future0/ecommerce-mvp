@@ -38,7 +38,14 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectToDatabase();
-  const products = await Product.find().sort({ createdAt: -1 }).populate("category", "name slug").lean();
+  const rows = await Product.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { categoryRef: { select: { name: true, slug: true } } },
+  });
+  const products = rows.map(({ categoryRef, ...product }) => ({
+    ...product,
+    category: categoryRef,
+  }));
   return NextResponse.json({ products });
 }
 
@@ -52,14 +59,26 @@ export async function POST(req: NextRequest) {
 
   await connectToDatabase();
 
-  const validCollections = await Collection.countDocuments({ _id: { $in: parsed.data.collections } });
+  const validCollections = await Collection.count({
+    where: { id: { in: parsed.data.collections } },
+  });
   if (validCollections !== parsed.data.collections.length) {
     return NextResponse.json({ error: "One or more collections were not found" }, { status: 400 });
   }
 
-  const existing = await Product.findOne({ slug: parsed.data.slug });
+  const existing = await Product.findUnique({ where: { slug: parsed.data.slug } });
   if (existing) return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
 
-  const product = await Product.create(parsed.data);
+  const { collections, ...data } = parsed.data;
+  const product = await Product.create({
+    data: {
+      ...data,
+      collections: {
+        create: collections.map((collectionId) => ({
+          collection: { connect: { id: collectionId } },
+        })),
+      },
+    },
+  });
   return NextResponse.json({ product }, { status: 201 });
 }

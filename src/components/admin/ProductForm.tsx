@@ -17,17 +17,17 @@ interface AttributeRow {
 }
 
 interface CategoryOption {
-  _id: string;
+  id: string;
   name: string;
 }
 
 interface CollectionOption {
-  _id: string;
+  id: string;
   title: string;
 }
 
 export interface ProductFormValues {
-  _id?: string;
+  id?: string;
   title: string;
   slug: string;
   description: string;
@@ -64,7 +64,7 @@ export function ProductForm({
   initial?: ProductFormValues;
 }) {
   const router = useRouter();
-  const isEdit = !!initial?._id;
+  const isEdit = !!initial?.id;
 
   const [title, setTitle] = useState(initial?.title ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
@@ -79,7 +79,7 @@ export function ProductForm({
   const [images, setImages] = useState((initial?.images ?? []).join("\n"));
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const [category, setCategory] = useState(initial?.category ?? categories[0]?._id ?? "");
+  const [category, setCategory] = useState(initial?.category ?? categories[0]?.id ?? "");
   const [selectedCollections, setSelectedCollections] = useState(initial?.collections ?? []);
   const [tags, setTags] = useState((initial?.tags ?? []).join(", "));
   const [attributes, setAttributes] = useState<AttributeRow[]>(
@@ -167,7 +167,7 @@ export function ProductForm({
       isActive,
     };
 
-    const res = await fetch(isEdit ? `/api/admin/products/${initial!._id}` : "/api/admin/products", {
+    const res = await fetch(isEdit ? `/api/admin/products/${initial!.id}` : "/api/admin/products", {
       method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -185,9 +185,9 @@ export function ProductForm({
   }
 
   async function onDelete() {
-    if (!initial?._id) return;
+    if (!initial?.id) return;
     if (!confirm(`Delete "${initial.title}"? This can't be undone.`)) return;
-    await fetch(`/api/admin/products/${initial._id}`, { method: "DELETE" });
+    await fetch(`/api/admin/products/${initial.id}`, { method: "DELETE" });
     router.push("/admin/products");
     router.refresh();
   }
@@ -250,8 +250,8 @@ export function ProductForm({
             <label className="text-xs text-stone">Collections (optional)</label>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {collections.map((collection) => (
-                <label key={collection._id} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={selectedCollections.includes(collection._id)} onChange={(e) => setSelectedCollections((current) => e.target.checked ? [...current, collection._id] : current.filter((id) => id !== collection._id))} />
+                <label key={collection.id} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={selectedCollections.includes(collection.id)} onChange={(e) => setSelectedCollections((current) => e.target.checked ? [...current, collection.id] : current.filter((id) => id !== collection.id))} />
                   {collection.title}
                 </label>
               ))}
@@ -274,7 +274,7 @@ export function ProductForm({
           <label className="text-xs text-stone">Category</label>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className={`mt-1 ${inputClass}`}>
             {categories.map((c) => (
-              <option key={c._id} value={c._id}>
+              <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}

@@ -20,7 +20,9 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectToDatabase();
-  const collections = await Collection.find().sort({ homeOrder: 1, title: 1 }).lean();
+  const collections = await Collection.findMany({
+    orderBy: [{ homeOrder: "asc" }, { title: "asc" }],
+  });
   return NextResponse.json({ collections: JSON.parse(JSON.stringify(collections)) });
 }
 
@@ -39,19 +41,25 @@ export async function POST(req: Request) {
   const orderedCollections = [...parsed.data.collectionIds].sort((a, b) => a.homeOrder - b.homeOrder);
 
   for (const [index, collection] of orderedCollections.entries()) {
-    await Collection.findByIdAndUpdate(collection.id, {
-      showOnHome: true,
-      homeOrder: collection.homeOrder || index + 1,
-      homeTheme: collection.homeTheme,
-      homeDisplayMode: collection.homeDisplayMode,
+    await Collection.updateMany({
+      where: { id: collection.id },
+      data: {
+        showOnHome: true,
+        homeOrder: collection.homeOrder || index + 1,
+        homeTheme: collection.homeTheme,
+        homeDisplayMode: collection.homeDisplayMode,
+      },
     });
   }
 
   const selectedIds = parsed.data.collectionIds.map((collection) => collection.id);
-  const allCollections = await Collection.find().lean();
+  const allCollections = await Collection.findMany({ select: { id: true } });
   for (const collection of allCollections) {
-    if (!selectedIds.includes(String(collection._id))) {
-      await Collection.findByIdAndUpdate(collection._id, { showOnHome: false, homeOrder: 100 });
+    if (!selectedIds.includes(collection.id)) {
+      await Collection.update({
+        where: { id: collection.id },
+        data: { showOnHome: false, homeOrder: 100 },
+      });
     }
   }
 

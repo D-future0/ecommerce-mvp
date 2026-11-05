@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/db";
+import { connectToDatabase, prisma } from "@/lib/db";
 import { Product } from "@/models/Product";
 import { Order } from "@/models/Order";
 import { Review } from "@/models/Review";
@@ -18,13 +18,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const { slug } = await params;
   await connectToDatabase();
 
-  const product = await Product.findOne({ slug }).select("_id").lean();
+  const product = await Product.findUnique({ where: { slug }, select: { id: true } });
   if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
 
-  const reviews = await Review.find({ product: product._id })
-    .sort({ createdAt: -1 })
-    .populate("user", "name")
-    .lean();
+  const reviewRows = await Review.findMany({
+    where: { product: product.id },
+    orderBy: { createdAt: "desc" },
+    include: { userRef: { select: { name: true } } },
+  });
+  const reviews = reviewRows.map(({ userRef, ...review }) => ({ ...review, user: userRef }));
 
   return NextResponse.json({ reviews });
 }
@@ -48,14 +50,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   }
 
   await connectToDatabase();
-  const product = await Product.findOne({ slug }).select("_id").lean();
+  const product = await Product.findUnique({ where: { slug }, select: { id: true } });
   if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
 
   const isAdmin = session.user.role === "admin";
-  const hasPurchased = await Order.exists({
-    user: session.user.id,
-    status: { $in: ["paid", "processing", "shipped", "delivered"] },
-    "items.product": product._id,
+  const hasPurchased = await Order.findFirst({
+    where: {
+      user: session.user.id,
+      status: { in: ["paid", "processing", "shipped", "delivered"] },
+      items: { array_contains: [{ product: product.id }] },
+    },
+    select: { id: true },
   });
 
   if (!isAdmin && !hasPurchased) {
@@ -66,15 +71,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   }
 
   try {
-    const review = await Review.create({
-      product: product._id,
-      user: session.user.id,
-      verifiedPurchase: !!hasPurchased,
-      ...parsed.data,
+    const review = await prisma.$transaction(async (tx) => {
+      const createdReview = await tx.review.create({
+        data: {
+          product: product.id,
+          user: session.user.id,
+          verifiedPurchase: !!hasPurchased,
+          ...parsed.data,
+        },
+      });
+      const ratings = await tx.review.findMany({
+        where: { product: product.id },
+        select: { rating: true },
+      });
+      const ratingAverage =
+        Math.round((ratings.reduce((sum, item) => sum + item.rating, 0) / ratings.length) * 10) / 10;
+      await tx.product.update({
+        where: { id: product.id },
+        data: { ratingAverage, ratingCount: ratings.length },
+      });
+      return createdReview;
     });
     return NextResponse.json({ review }, { status: 201 });
-  } catch (err: any) {
-    if (err?.code === 11000) {
+  } catch (err) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      err.code === "P2002"
+    ) {
       return NextResponse.json({ error: "You've already reviewed this product" }, { status: 409 });
     }
     throw err;

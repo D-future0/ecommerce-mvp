@@ -15,8 +15,15 @@ export async function SiteHeader() {
   // the header degrades to no category links instead of a 500.
   const categories = await connectToDatabase()
     .then(async () => {
-      const categoryIds = await Product.distinct("category", { isActive: true });
-      return Category.find({ _id: { $in: categoryIds } }).sort({ name: 1 }).lean();
+      const productCategories = await Product.findMany({
+        where: { isActive: true },
+        select: { category: true },
+        distinct: ["category"],
+      });
+      return Category.findMany({
+        where: { id: { in: productCategories.map((product) => product.category) } },
+        orderBy: { name: "asc" },
+      });
     })
     .catch(() => []);
 

@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = searchParams.get("callbackUrl");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,12 +23,32 @@ function LoginForm() {
     try {
       const res = await signIn("credentials", { email, password, redirect: false });
 
-      if (res?.error) {
-        setError(res.error);
+      if (!res?.ok || res.error) {
+        setError(res?.error ?? "We couldn't sign you in. Please try again.");
         return;
       }
 
-      router.push(callbackUrl);
+      const session = await getSession();
+      if (!session) {
+        setError("We couldn't verify your sign-in. Please try again.");
+        return;
+      }
+
+      const defaultDestination = session.user.role === "admin" ? "/admin" : "/";
+      let destination = defaultDestination;
+      if (callbackUrl) {
+        const callback = new URL(callbackUrl, window.location.origin);
+        const isAdminDestination =
+          callback.pathname === "/admin" || callback.pathname.startsWith("/admin/");
+        if (
+          callback.origin === window.location.origin &&
+          (session.user.role !== "admin" || isAdminDestination)
+        ) {
+          destination = `${callback.pathname}${callback.search}${callback.hash}`;
+        }
+      }
+
+      router.replace(destination);
       router.refresh();
     } catch {
       setError("We couldn't reach the server. Please try again.");

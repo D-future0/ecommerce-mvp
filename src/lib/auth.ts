@@ -43,9 +43,9 @@ export const authOptions: AuthOptions = {
 
         await connectToDatabase();
 
-        const user = await User.findOne({ email: credentials.email.toLowerCase() }).select(
-          "+passwordHash"
-        );
+        const user = await User.findUnique({
+          where: { email: credentials.email.toLowerCase() },
+        });
         if (!user) throw new Error("Invalid email or password");
         if (user.isDeactivated) throw new Error("This account has been deactivated.");
 
@@ -53,10 +53,10 @@ export const authOptions: AuthOptions = {
         if (!isValid) throw new Error("Invalid email or password");
 
         return {
-          id: user._id.toString(),
+          id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: user.role === "admin" ? "admin" : "customer",
         };
       },
     }),

@@ -17,7 +17,9 @@ export async function GET() {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectToDatabase();
-  return NextResponse.json({ collections: await Collection.find().sort({ title: 1 }).lean() });
+  return NextResponse.json({
+    collections: await Collection.findMany({ orderBy: { title: "asc" } }),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -26,8 +28,10 @@ export async function POST(req: NextRequest) {
   const parsed = collectionSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   await connectToDatabase();
-  if (await Collection.exists({ slug: parsed.data.slug })) {
+  if (await Collection.findUnique({ where: { slug: parsed.data.slug } })) {
     return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
   }
-  return NextResponse.json({ collection: await Collection.create(parsed.data) }, { status: 201 });
+  return NextResponse.json({
+    collection: await Collection.create({ data: parsed.data }),
+  }, { status: 201 });
 }

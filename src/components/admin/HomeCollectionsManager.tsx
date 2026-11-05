@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 interface HomeCollectionItem {
-  _id: string;
+  id: string;
   name: string;
   showOnHome?: boolean;
   homeOrder?: number;
@@ -40,13 +40,13 @@ export function HomeCollectionsManager({
   );
 
   function updateItem(id: string, patch: Partial<HomeCollectionItem>) {
-    setItems((prev) => prev.map((item) => (item._id === id ? { ...item, ...patch } : item)));
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
     setSaved(false);
   }
 
   async function handleSave() {
     const collectionIds = orderedVisibleItems.map((item) => ({
-      id: item._id,
+      id: item.id,
       homeOrder: item.homeOrder ?? 100,
       homeTheme: item.homeTheme ?? "purple",
       homeDisplayMode: item.homeDisplayMode ?? "grid",
@@ -91,46 +91,46 @@ export function HomeCollectionsManager({
 
       <div className="mt-5 space-y-3">
         {items.map((item) => (
-          <div key={item._id} className="flex flex-col gap-3 rounded border border-line p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div key={item.id} className="flex flex-col gap-3 rounded border border-line p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3 text-sm text-ink">
               <input
                 type="checkbox"
                 checked={item.showOnHome}
-                onChange={(e) => updateItem(item._id, { showOnHome: e.target.checked })}
+                onChange={(e) => updateItem(item.id, { showOnHome: e.target.checked })}
                 className="accent-accent"
               />
                 <span>{item.name}</span>
               </div>
 
             <div className="flex flex-wrap items-center gap-3 text-sm text-stone">
-              <label htmlFor={`order-${item._id}`} className="text-xs uppercase tracking-[0.12em] text-stone">
+              <label htmlFor={`order-${item.id}`} className="text-xs uppercase tracking-[0.12em] text-stone">
                 Order
               </label>
               <input
-                id={`order-${item._id}`}
+                id={`order-${item.id}`}
                 type="number"
                 min={1}
                 value={item.homeOrder ?? 100}
-                onChange={(e) => updateItem(item._id, { homeOrder: Number(e.target.value) || 100 })}
+                onChange={(e) => updateItem(item.id, { homeOrder: Number(e.target.value) || 100 })}
                 className="w-20 border border-line bg-transparent px-2 py-1 text-sm outline-none focus:border-ink"
                 disabled={!item.showOnHome}
               />
-              <label htmlFor={`style-${item._id}`} className="sr-only">Style for {item.name}</label>
+              <label htmlFor={`style-${item.id}`} className="sr-only">Style for {item.name}</label>
               <select
-                id={`style-${item._id}`}
+                id={`style-${item.id}`}
                 value={item.homeDisplayMode}
-                onChange={(e) => updateItem(item._id, { homeDisplayMode: e.target.value as HomeCollectionItem["homeDisplayMode"] })}
+                onChange={(e) => updateItem(item.id, { homeDisplayMode: e.target.value as HomeCollectionItem["homeDisplayMode"] })}
                 disabled={!item.showOnHome}
                 className="border border-line bg-transparent px-2 py-1 text-sm text-ink outline-none focus:border-ink"
               >
                 <option value="grid">Grid</option>
                 <option value="carousel">Carousel</option>
               </select>
-              <label htmlFor={`theme-${item._id}`} className="sr-only">Theme for {item.name}</label>
+              <label htmlFor={`theme-${item.id}`} className="sr-only">Theme for {item.name}</label>
               <select
-                id={`theme-${item._id}`}
+                id={`theme-${item.id}`}
                 value={item.homeTheme}
-                onChange={(e) => updateItem(item._id, { homeTheme: e.target.value as HomeCollectionItem["homeTheme"] })}
+                onChange={(e) => updateItem(item.id, { homeTheme: e.target.value as HomeCollectionItem["homeTheme"] })}
                 disabled={!item.showOnHome}
                 className="border border-line bg-transparent px-2 py-1 text-sm text-ink outline-none focus:border-ink"
               >

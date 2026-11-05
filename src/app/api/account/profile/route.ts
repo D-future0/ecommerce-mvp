@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   await connectToDatabase();
 
-  const user = await User.findById(session.user.id);
+  const user = await User.findUnique({ where: { id: session.user.id } });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
@@ -41,22 +41,24 @@ export async function POST(req: Request) {
   const nextEmail = email?.trim().toLowerCase();
 
   if (nextEmail && nextEmail !== user.email) {
-    const existing = await User.findOne({ email: nextEmail, _id: { $ne: user._id } });
+    const existing = await User.findFirst({
+      where: { email: nextEmail, id: { not: user.id } },
+    });
     if (existing) {
       return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
     }
-    user.email = nextEmail;
   }
 
-  if (name) user.name = name.trim();
-  if (typeof phone !== "undefined") user.phone = phone.trim();
-  if (typeof mobile !== "undefined") user.mobile = mobile.trim();
-
-  if (password && password.trim()) {
-    user.passwordHash = await bcrypt.hash(password, 12);
-  }
-
-  await user.save();
+  await User.update({
+    where: { id: user.id },
+    data: {
+      ...(nextEmail && nextEmail !== user.email ? { email: nextEmail } : {}),
+      ...(name ? { name: name.trim() } : {}),
+      ...(typeof phone !== "undefined" ? { phone: phone.trim() } : {}),
+      ...(typeof mobile !== "undefined" ? { mobile: mobile.trim() } : {}),
+      ...(password?.trim() ? { passwordHash: await bcrypt.hash(password, 12) } : {}),
+    },
+  });
 
   return NextResponse.json({ ok: true });
 }

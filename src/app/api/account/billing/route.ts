@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
   await connectToDatabase();
 
-  const user = await User.findById(session.user.id);
+  const user = await User.findUnique({ where: { id: session.user.id } });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
@@ -38,16 +38,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "This account has been deactivated." }, { status: 403 });
   }
 
-  user.billingAddress = {
+  await User.update({ where: { id: user.id }, data: { billingAddress: {
     label: parsed.data.label.trim(),
     line1: parsed.data.line1.trim(),
-    line2: parsed.data.line2?.trim() || undefined,
+    ...(parsed.data.line2?.trim() ? { line2: parsed.data.line2.trim() } : {}),
     city: parsed.data.city.trim(),
     state: parsed.data.state.trim(),
     country: parsed.data.country.trim(),
     phone: parsed.data.phone.trim(),
-  };
-
-  await user.save();
+  } } });
   return NextResponse.json({ ok: true });
 }

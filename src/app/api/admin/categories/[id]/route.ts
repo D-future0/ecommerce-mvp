@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   await connectToDatabase();
-  const category = await Category.findById(id).lean();
+  const category = await Category.findUnique({ where: { id: id } });
   if (!category) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ category });
 }
@@ -51,19 +51,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (parsed.data.parent === id) {
       return NextResponse.json({ error: "A category cannot be its own parent" }, { status: 400 });
     }
-    const parent = await Category.exists({ _id: parsed.data.parent });
+    const parent = await Category.findUnique({
+      where: { id: parsed.data.parent },
+      select: { id: true },
+    });
     if (!parent) return NextResponse.json({ error: "Parent category not found" }, { status: 400 });
   }
 
-  const conflict = await Category.findOne({ slug: parsed.data.slug, _id: { $ne: id } });
+  const conflict = await Category.findFirst({
+    where: { slug: parsed.data.slug, id: { not: id } },
+  });
   if (conflict) return NextResponse.json({ error: "Slug already in use" }, { status: 409 });
 
-  const category = await Category.findByIdAndUpdate(
-    id,
-    { ...parsed.data, parent: parsed.data.parent || null },
-    { new: true }
-  );
-  if (!category) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const updated = await Category.updateMany({
+    where: { id: id },
+    data: { ...parsed.data, parent: parsed.data.parent || null },
+  });
+  if (!updated.count) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const category = await Category.findUnique({ where: { id: id } });
 
   return NextResponse.json({ category });
 }
@@ -75,7 +80,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   await connectToDatabase();
 
-  const categoryToDelete = await Category.findById(id).select("slug").lean();
+  const categoryToDelete = await Category.findUnique({
+    where: { id: id },
+    select: { slug: true },
+  });
   if (!categoryToDelete) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (categoryToDelete.slug === "uncategorized") {
     return NextResponse.json({ error: "The Uncategorized category cannot be deleted" }, { status: 400 });
@@ -93,32 +101,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     if (replacementCategoryId === id) {
       return NextResponse.json({ error: "Choose a different category" }, { status: 400 });
     }
-    const replacement = await Category.exists({ _id: replacementCategoryId });
+    const replacement = await Category.findUnique({
+      where: { id: replacementCategoryId },
+      select: { id: true },
+    });
     if (!replacement) return NextResponse.json({ error: "Replacement category not found" }, { status: 400 });
   }
 
-  const inUse = await Product.countDocuments({ category: id });
-  if (inUse > 0) {
-    const fallback = replacementCategoryId
-      ? null
-      : await Category.findOneAndUpdate(
-          { slug: "uncategorized" },
-          {
-            $setOnInsert: {
-              name: "Uncategorized",
-              slug: "uncategorized",
-              description: "Products awaiting a category assignment.",
-              filters: [],
-            },
-          },
-          { upsert: true, new: true }
-        );
-    const targetCategoryId = replacementCategoryId ?? fallback?._id.toString();
-    if (!targetCategoryId) return NextResponse.json({ error: "Couldn't create the fallback category" }, { status: 500 });
-    await Product.updateMany({ category: id }, { $set: { category: targetCategoryId } });
-  }
-
-  const childCount = await Category.countDocuments({ parent: id });
+  const childCount = await Category.count({ where: { parent: id } });
   if (childCount > 0) {
     return NextResponse.json(
       { error: `${childCount} child categor${childCount === 1 ? "y" : "ies"} still use this category` },
@@ -126,6 +116,25 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     );
   }
 
-  await Category.findByIdAndDelete(id);
+  const inUse = await Product.count({ where: { category: id } });
+  if (inUse > 0) {
+    const fallback = replacementCategoryId
+      ? null
+      : await Category.upsert({
+          where: { slug: "uncategorized" },
+          create: {
+            name: "Uncategorized",
+            slug: "uncategorized",
+            description: "Products awaiting a category assignment.",
+            filters: [],
+          },
+          update: { slug: "uncategorized" },
+        });
+    const targetCategoryId = replacementCategoryId ?? fallback?.id;
+    if (!targetCategoryId) return NextResponse.json({ error: "Couldn't create the fallback category" }, { status: 500 });
+    await Product.updateMany({ where: { category: id }, data: { category: targetCategoryId } });
+  }
+
+  await Category.delete({ where: { id: id } });
   return NextResponse.json({ ok: true });
 }

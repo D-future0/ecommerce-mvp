@@ -18,7 +18,9 @@ export async function GET() {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectToDatabase();
-  const banners = await Banner.find().sort({ sortOrder: 1, createdAt: -1 }).lean();
+  const banners = await Banner.findMany({
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+  });
   return NextResponse.json({ banners });
 }
 
@@ -30,6 +32,6 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   await connectToDatabase();
-  const banner = await Banner.create(parsed.data);
+  const banner = await Banner.create({ data: parsed.data });
   return NextResponse.json({ banner }, { status: 201 });
 }

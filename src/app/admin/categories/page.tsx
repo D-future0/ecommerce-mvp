@@ -4,12 +4,19 @@ import Link from "next/link";
 import { connectToDatabase } from "@/lib/db";
 import { Category } from "@/models/Category";
 import { Product } from "@/models/Product";
+import { parseCategoryFilters } from "@/lib/category-data";
 
 export default async function AdminCategoriesPage() {
   await connectToDatabase();
-  const categories = await Category.find().sort({ name: 1 }).lean();
-  const counts = await Product.aggregate([{ $group: { _id: "$category", count: { $sum: 1 } } }]);
-  const countMap = new Map(counts.map((c) => [c._id.toString(), c.count]));
+  const [categoryRows, counts] = await Promise.all([
+    Category.findMany({ orderBy: { name: "asc" } }),
+    Product.groupBy({ by: ["category"], _count: { _all: true } }),
+  ]);
+  const categories = categoryRows.map((category) => ({
+    ...category,
+    filters: parseCategoryFilters(category.filters),
+  }));
+  const countMap = new Map(counts.map((count) => [count.category, count._count._all]));
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -30,15 +37,15 @@ export default async function AdminCategoriesPage() {
         </thead>
         <tbody>
           {categories.map((c) => (
-            <tr key={c._id.toString()} className="border-b border-line">
+            <tr key={c.id} className="border-b border-line">
               <td className="py-3">
-                <Link href={`/admin/categories/${c._id}`} className="text-ink">
+                <Link href={`/admin/categories/${c.id}`} className="text-ink">
                   {c.parent ? <span className="text-stone">↳ </span> : null}{c.name}
                 </Link>
               </td>
               <td className="py-3 text-stone">{c.slug}</td>
               <td className="py-3 text-stone">{c.filters.length}</td>
-              <td className="py-3 text-stone">{countMap.get(c._id.toString()) ?? 0}</td>
+              <td className="py-3 text-stone">{countMap.get(c.id.toString()) ?? 0}</td>
             </tr>
           ))}
         </tbody>

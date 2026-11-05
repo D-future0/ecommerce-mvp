@@ -13,20 +13,28 @@ export default async function AdminDashboard() {
   await connectToDatabase();
 
   const [productCount, activeCount, pendingOrders, paidOrders, lowStock, revenueAgg, userCount, recentUsers] = await Promise.all([
-    Product.countDocuments(),
-    Product.countDocuments({ isActive: true }),
-    Order.countDocuments({ status: "pending" }),
-    Order.countDocuments({ status: { $in: ["paid", "processing", "shipped", "delivered"] } }),
-    Product.find({ stock: { $lte: LOW_STOCK_THRESHOLD }, isActive: true }).select("title stock slug").limit(10).lean(),
-    Order.aggregate([
-      { $match: { status: { $in: ["paid", "processing", "shipped", "delivered"] } } },
-      { $group: { _id: null, total: { $sum: "$total" } } },
-    ]),
-    User.countDocuments(),
-    User.find({}).select("name email role createdAt").sort({ createdAt: -1 }).limit(5).lean(),
+    Product.count(),
+    Product.count({ where: { isActive: true } }),
+    Order.count({ where: { status: "pending" } }),
+    Order.count({ where: { status: { in: ["paid", "processing", "shipped", "delivered"] } } }),
+    Product.findMany({
+      where: { stock: { lte: LOW_STOCK_THRESHOLD }, isActive: true },
+      select: { title: true, stock: true, slug: true, id: true },
+      take: 10,
+    }),
+    Order.aggregate({
+      where: { status: { in: ["paid", "processing", "shipped", "delivered"] } },
+      _sum: { total: true },
+    }),
+    User.count(),
+    User.findMany({
+      select: { name: true, email: true, role: true, createdAt: true, id: true },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
   ]);
 
-  const revenue = revenueAgg[0]?.total ?? 0;
+  const revenue = revenueAgg._sum.total ?? 0;
 
   const stats = [
     { label: "Products", value: `${activeCount} / ${productCount}`, sub: "active / total" },
@@ -56,8 +64,8 @@ export default async function AdminDashboard() {
           ) : (
             <ul className="mt-3 divide-y divide-line border-y border-line">
               {lowStock.map((p) => (
-                <li key={p._id.toString()} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                  <Link href={`/admin/products/${p._id}`} className="text-ink">
+                <li key={p.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                  <Link href={`/admin/products/${p.id}`} className="text-ink">
                     {p.title}
                   </Link>
                   <span className={p.stock === 0 ? "text-red-700" : "text-accent"}>{p.stock} left</span>
@@ -79,7 +87,7 @@ export default async function AdminDashboard() {
               <p className="text-sm text-stone">No users yet.</p>
             ) : (
               recentUsers.map((user) => (
-                <div key={String(user._id)} className="border-b border-line pb-2 last:border-b-0 last:pb-0">
+                <div key={user.id} className="border-b border-line pb-2 last:border-b-0 last:pb-0">
                   <p className="text-sm font-medium text-ink">{user.name || "Unnamed user"}</p>
                   <p className="text-xs text-stone">{user.email}</p>
                   <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-stone">{user.role}</p>

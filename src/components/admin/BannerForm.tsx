@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export interface BannerFormValues {
-  _id?: string;
+  id?: string;
   title: string;
   subtitle?: string;
   image: string;
@@ -15,7 +15,7 @@ export interface BannerFormValues {
 
 export function BannerForm({ initial }: { initial?: BannerFormValues }) {
   const router = useRouter();
-  const isEdit = !!initial?._id;
+  const isEdit = !!initial?.id;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [subtitle, setSubtitle] = useState(initial?.subtitle ?? "");
   const [image, setImage] = useState(initial?.image ?? "");
@@ -58,7 +58,7 @@ export function BannerForm({ initial }: { initial?: BannerFormValues }) {
         active,
         sortOrder: Number(sortOrder) || 0,
       };
-      const res = await fetch(isEdit ? `/api/admin/banners/${initial!._id}` : "/api/admin/banners", {
+      const res = await fetch(isEdit ? `/api/admin/banners/${initial!.id}` : "/api/admin/banners", {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -74,8 +74,8 @@ export function BannerForm({ initial }: { initial?: BannerFormValues }) {
   }
 
   async function onDelete() {
-    if (!initial?._id || !confirm(`Delete "${initial.title}"?`)) return;
-    const res = await fetch(`/api/admin/banners/${initial._id}`, { method: "DELETE" });
+    if (!initial?.id || !confirm(`Delete "${initial.title}"?`)) return;
+    const res = await fetch(`/api/admin/banners/${initial.id}`, { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(typeof data.error === "string" ? data.error : "Couldn't delete this banner.");

@@ -1,17 +1,9 @@
 /**
  * Seeds the storefront catalog with the requested category tree and featured
- * collections. Run with `npm run seed`. Safe to re-run — it upserts by slug.
+ * collections. Run with `pnpm run seed`. Safe to re-run — it upserts by slug.
  */
 import { config } from "dotenv";
 import bcrypt from "bcryptjs";
-import mongoose from "mongoose";
-import { Category } from "../models/Category";
-import { Collection } from "../models/Collection";
-import { Product } from "../models/Product";
-import { User } from "../models/User";
-
-config({ path: ".env.local" });
-config({ path: ".env" });
 
 type SeedProduct = {
   title: string;
@@ -493,20 +485,17 @@ const genderCategories: SeedCategory[] = [
 ];
 
 async function main() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error("Set MONGODB_URI before seeding");
+  config({ path: ".env.local" });
+  config({ path: ".env" });
+  const { prisma } = await import("../lib/db");
 
-  await mongoose.connect(uri);
+  try {
+    const allCategorySeeds = genderCategories;
+    let totalProducts = 0;
 
-  const allCategorySeeds = genderCategories;
-  let totalProducts = 0;
-
-  for (const [index, categorySeed] of allCategorySeeds.entries()) {
-    const category = await Category.findOneAndUpdate(
-      { slug: categorySeed.slug },
-      {
+    for (const [index, categorySeed] of allCategorySeeds.entries()) {
+      const data = {
         name: categorySeed.name,
-        slug: categorySeed.slug,
         description: categorySeed.description,
         featured: categorySeed.featured ?? false,
         filters: categorySeed.filters ?? [
@@ -517,96 +506,111 @@ async function main() {
         homeOrder: index + 1,
         homeTheme: categorySeed.homeTheme ?? "purple",
         homeDisplayMode: "grid",
-      },
-      { upsert: true, new: true }
-    );
+      };
+      const category = await prisma.category.upsert({
+        where: { slug: categorySeed.slug },
+        create: { ...data, slug: categorySeed.slug },
+        update: data,
+      });
 
-    for (const childName of categorySeed.subcategories ?? []) {
-      const childSlug = `${category.slug}-${childName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
-      await Category.findOneAndUpdate(
-        { slug: childSlug },
-        {
+      for (const childName of categorySeed.subcategories ?? []) {
+        const childSlug = `${category.slug}-${childName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
+        const childData = {
           name: childName,
-          slug: childSlug,
           description: `Shop ${category.name} ${childName.toLowerCase()}.`,
-          parent: category._id,
+          parent: category.id,
           filters: [{ key: "color", label: "Color", options: ["Black", "White", "Sand", "Ivory"] }],
           showOnHome: false,
           homeOrder: 100,
-        },
-        { upsert: true, new: true }
-      );
-    }
+        };
+        await prisma.category.upsert({
+          where: { slug: childSlug },
+          create: { ...childData, slug: childSlug },
+          update: childData,
+        });
+      }
 
-    for (const product of categorySeed.products ?? []) {
-      await Product.findOneAndUpdate(
-        { slug: product.slug },
-        {
+      for (const product of categorySeed.products ?? []) {
+        const productData = {
           ...product,
-          category: category._id,
+          category: category.id,
           currency: "NGN",
-          reviewsEnabled: true,
-        },
-        { upsert: true, new: true }
-      );
-      totalProducts += 1;
+        };
+        await prisma.product.upsert({
+          where: { slug: product.slug },
+          create: productData,
+          update: productData,
+        });
+        totalProducts += 1;
+      }
+
+      console.log(`Seeded category "${category.name}" with ${(categorySeed.products ?? []).length} products.`);
     }
 
-    console.log(`Seeded category "${category.name}" with ${(categorySeed.products ?? []).length} products.`);
-  }
+    const unisexCategory = await prisma.category.findUnique({ where: { slug: "unisex" } });
+    if (!unisexCategory) throw new Error("The Unisex category is required before seeding collections");
 
-  const unisexCategory = await Category.findOne({ slug: "unisex" });
-  if (!unisexCategory) throw new Error("The Unisex category is required before seeding collections");
-
-  for (const [index, collectionSeed] of topLevelCollections.entries()) {
-    const collection = await Collection.findOneAndUpdate(
-      { slug: collectionSeed.slug },
-      {
+    for (const [index, collectionSeed] of topLevelCollections.entries()) {
+      const collectionData = {
         title: collectionSeed.name,
-        slug: collectionSeed.slug,
         description: collectionSeed.description,
         showOnHome: true,
         homeOrder: index + 1,
         homeTheme: collectionSeed.homeTheme ?? "purple",
         homeDisplayMode: "grid",
-      },
-      { upsert: true, new: true }
-    );
+      };
+      const collection = await prisma.collection.upsert({
+        where: { slug: collectionSeed.slug },
+        create: { ...collectionData, slug: collectionSeed.slug },
+        update: collectionData,
+      });
 
-    for (const product of collectionSeed.products ?? []) {
-      await Product.findOneAndUpdate(
-        { slug: product.slug },
-        {
+      for (const product of collectionSeed.products ?? []) {
+        const productData = {
           ...product,
-          category: unisexCategory._id,
-          collections: [collection._id],
+          category: unisexCategory.id,
           currency: "NGN",
-          reviewsEnabled: true,
-        },
-        { upsert: true, new: true }
-      );
-      totalProducts += 1;
+        };
+        const seededProduct = await prisma.product.upsert({
+          where: { slug: product.slug },
+          create: productData,
+          update: productData,
+        });
+        await prisma.productCollection.deleteMany({
+          where: { productId: seededProduct.id },
+        });
+        await prisma.productCollection.create({
+          data: { productId: seededProduct.id, collectionId: collection.id },
+        });
+        totalProducts += 1;
+      }
+
+      console.log(`Seeded collection "${collection.title}" with ${(collectionSeed.products ?? []).length} products.`);
     }
 
-    console.log(`Seeded collection "${collection.title}" with ${(collectionSeed.products ?? []).length} products.`);
-  }
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (adminEmail && adminPassword) {
+      const passwordHash = await bcrypt.hash(adminPassword, 12);
+      await prisma.user.upsert({
+        where: { email: adminEmail.toLowerCase() },
+        create: {
+          name: "Admin",
+          email: adminEmail.toLowerCase(),
+          passwordHash,
+          role: "admin",
+        },
+        update: { role: "admin" },
+      });
+      console.log(`Admin account ready: ${adminEmail}`);
+    } else {
+      console.log("No ADMIN_EMAIL/ADMIN_PASSWORD set — sign up normally, then promote your account to admin in PostgreSQL.");
+    }
 
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (adminEmail && adminPassword) {
-    const passwordHash = await bcrypt.hash(adminPassword, 12);
-    await User.findOneAndUpdate(
-      { email: adminEmail.toLowerCase() },
-      { $set: { role: "admin" }, $setOnInsert: { name: "Admin", passwordHash } },
-      { upsert: true }
-    );
-    console.log(`Admin account ready: ${adminEmail}`);
-  } else {
-    console.log("No ADMIN_EMAIL/ADMIN_PASSWORD set — sign up normally, then flip role to \"admin\" in MongoDB to reach /admin.");
+    console.log(`Finished seeding ${totalProducts} products across ${allCategorySeeds.length} categories.`);
+  } finally {
+    await prisma.$disconnect();
   }
-
-  console.log(`Finished seeding ${totalProducts} products across ${allCategorySeeds.length} categories.`);
-  await mongoose.disconnect();
 }
 
 main().catch((err) => {

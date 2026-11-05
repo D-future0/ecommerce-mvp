@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 interface ReviewDoc {
-  _id: string;
+  id: string;
   rating: number;
   title?: string;
   body: string;
@@ -59,10 +59,12 @@ export default async function ProductPage({ params }: PageProps) {
     getRelatedProducts(productDoc),
     (async () => {
       await connectToDatabase();
-      return Review.find({ product: productDoc._id })
-        .sort({ createdAt: -1 })
-        .populate("user", "name")
-        .lean();
+      const rows = await Review.findMany({
+        where: { product: productDoc.id },
+        orderBy: { createdAt: "desc" },
+        include: { userRef: { select: { name: true } } },
+      });
+      return rows.map(({ userRef, ...review }) => ({ ...review, user: userRef }));
     })(),
     getServerSession(authOptions),
   ]);
@@ -71,20 +73,26 @@ export default async function ProductPage({ params }: PageProps) {
   let initiallyWishlisted = false;
   if (session?.user) {
     const [user, purchase] = await Promise.all([
-      User.findById(session.user.id).select("wishlist").lean(),
-      Order.exists({
-        user: session.user.id,
-        status: { $in: ["paid", "processing", "shipped", "delivered"] },
-        "items.product": productDoc._id,
+      User.findUnique({
+        where: { id: session.user.id },
+        select: { wishlist: true },
+      }),
+      Order.findFirst({
+        where: {
+          user: session.user.id,
+          status: { in: ["paid", "processing", "shipped", "delivered"] },
+          items: { array_contains: [{ product: productDoc.id }] },
+        },
+        select: { id: true },
       }),
     ]);
 
-    initiallyWishlisted = !!user?.wishlist.some((id) => id.toString() === productDoc._id.toString());
+    initiallyWishlisted = !!user?.wishlist.includes(productDoc.id);
     canReview = session.user.role === "admin" || !!purchase;
   }
 
   const product = toPlain<{
-    _id: string;
+    id: string;
     slug: string;
     title: string;
     description: string;
@@ -108,7 +116,7 @@ export default async function ProductPage({ params }: PageProps) {
     name: product.title,
     description: product.seoDescription || product.description,
     image: product.images,
-    sku: product._id,
+    sku: product.id,
     category: product.category.name,
     url: productUrl,
     offers: { "@type": "Offer", url: productUrl, priceCurrency: product.currency, price: (product.price / 100).toFixed(2), availability: "https://schema.org/InStock" },
@@ -144,7 +152,7 @@ export default async function ProductPage({ params }: PageProps) {
 
           <div className="mt-8 max-w-sm">
             <PurchasePanel
-              productId={product._id}
+              productId={product.id}
               basePrice={product.price}
               currency={product.currency}
               variants={product.variants}
@@ -162,7 +170,7 @@ export default async function ProductPage({ params }: PageProps) {
         ) : (
           <ul className="mt-6 space-y-6">
             {reviews.map((review) => (
-              <li key={review._id} className="border-b border-line pb-6">
+              <li key={review.id} className="border-b border-line pb-6">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-ink">{"★".repeat(review.rating)}</span>
                   <span className="text-line">{"★".repeat(5 - review.rating)}</span>

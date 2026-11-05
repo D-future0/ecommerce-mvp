@@ -4,6 +4,6 @@ import { Category } from "@/models/Category";
 
 export async function GET() {
   await connectToDatabase();
-  const categories = await Category.find().sort({ name: 1 }).lean();
+  const categories = await Category.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json({ categories });
 }
