@@ -8,6 +8,7 @@ import { Collection } from "@/models/Collection";
 import { Product } from "@/models/Product";
 import { toPlain } from "@/lib/serialize";
 import type { ProductListItem } from "@/types/product";
+import { Fragment } from "react";
 
 type HomeCollection = {
   id: string;
@@ -32,6 +33,30 @@ export default async function HomePage() {
       orderBy: [{ homeOrder: "asc" }, { title: "asc" }],
     })
   );
+  const collectionSections = await Promise.all(
+    collections.map(async (collection) => {
+      const collectionProducts = await Product.findMany({
+        where: {
+          collections: { some: { collectionId: collection.id } },
+          isActive: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 4,
+      });
+
+      return (
+        <FeaturedSection
+          key={collection.id}
+          title={collection.title}
+          collectionSlug={collection.slug}
+          products={toPlain<ProductListItem[]>(collectionProducts)}
+          theme={collection.homeTheme ?? "purple"}
+          displayMode={collection.homeDisplayMode ?? "grid"}
+          image={collection.image}
+        />
+      );
+    })
+  );
 
   return (
     <main>
@@ -50,34 +75,21 @@ export default async function HomePage() {
         </p>
       </div>
 
-      {collections.length > 0 ? (
+      {collectionSections.length > 0 ? (
         <>
-          {(
-            await Promise.all(
-              collections.map(async (collection) => {
-                const collectionProducts = await Product.findMany({
-                  where: {
-                    collections: { some: { collectionId: collection.id } },
-                    isActive: true,
-                  },
-                  orderBy: { createdAt: "desc" },
-                  take: 4,
-                });
-
-                return (
-                  <FeaturedSection
-                    key={String(collection.id)}
-                    title={collection.title}
-                    collectionSlug={collection.slug}
-                    products={toPlain<ProductListItem[]>(collectionProducts)}
-                    theme={collection.homeTheme ?? "purple"}
-                    displayMode={collection.homeDisplayMode ?? "grid"}
-                    image={collection.image}
+          {collectionSections.map((section, index) => (
+            <Fragment key={collections[index].id}>
+              {section}
+              {banners.length > 0 && index < collectionSections.length - 1 && (
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                  <BannerCarousel
+                    banners={[banners[index % banners.length]]}
+                    size="section"
                   />
-                );
-              })
-            )
-          )}
+                </div>
+              )}
+            </Fragment>
+          ))}
         </>
       ) : (
         <FeaturedSection />

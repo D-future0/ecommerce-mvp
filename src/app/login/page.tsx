@@ -2,11 +2,10 @@
 
 import { useState, Suspense } from "react";
 import { getSession, signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
 
@@ -48,8 +47,7 @@ function LoginForm() {
         }
       }
 
-      router.replace(destination);
-      router.refresh();
+      window.location.assign(destination);
     } catch {
       setError("We couldn't reach the server. Please try again.");
     } finally {
